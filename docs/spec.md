@@ -143,12 +143,19 @@ The workout ends automatically after the last block.
 
 - Name + total duration, static profile preview (same chart as the ride),
   updates on every change.
-- Block table: type, duration (mm:ss), watts or start → end; per row ↑ ↓,
-  duplicate, delete.
+- Block list: type (Steady | Ramp), duration (m:ss), watts or start → end; per row
+  duplicate and delete. **Drag & drop** by the handle to reorder; Alt (⌥) or Ctrl
+  while dropping copies the block; Alt+↑/↓ moves the focused block.
 - "+ Steady" (default 5 min @ 150 W) and "+ Ramp" (default 5 min from the previous
   block's watts to +50 W).
 - Explicit Save; warning when leaving with unsaved changes.
 - Workout list: new, edit, duplicate, delete, start.
+
+## Home
+
+Free ride card, the 3 most recently edited workouts, the last ride (mini chart +
+4 stats) and device status. Look and feel: [design.md](design.md) – dark theme,
+violet accent, Archivo.
 
 ## Ride history
 
@@ -187,5 +194,5 @@ Samples store raw values, the 3 s average is display-only.
 ## Out of scope for V1
 
 Wi-Fi / Wahoo Direct Connect (DIRCON), `.zwo` import, interval block, % FTP,
-analytics (power curve, trends, TSS), Strava / FIT export, drag & drop builder,
+analytics (power curve, trends, TSS), Strava / FIT export,
 code signing, auto-update, settings UI beyond max HR.

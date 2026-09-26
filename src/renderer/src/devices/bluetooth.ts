@@ -20,6 +20,7 @@ const OPTIONS: Record<DeviceKind, RequestDeviceOptions> = {
 }
 const SEARCH_TIMEOUT_MS = 15000
 const RETRY_MS = 20000
+const RETRY_MAX_MS = 300000 // back off to 5 min while a stored device stays away (BLE scanning costs power)
 const FIRMWARE_HINT =
   'Zwift Ride service not found. Controller firmware newer than 1.2.0 hides it – do not update the firmware.'
 
@@ -55,7 +56,8 @@ export function createBluetoothManager(): DeviceManager {
   let chosen: string | null = null
   let cancelSearch: (() => void) | null = null
   let searching = false
-  let retryTimer: ReturnType<typeof setInterval> | undefined
+  let retryTimer: ReturnType<typeof setTimeout> | undefined
+  let retryDelay = RETRY_MS
 
   // only one requestDevice() may be pending
   let lock: Promise<unknown> = Promise.resolve()
@@ -232,6 +234,20 @@ export function createBluetoothManager(): DeviceManager {
     }
   }
 
+  const missing = () => KINDS.filter((k) => stored[k] && !devs[k]?.gatt?.connected).length
+
+  /** Background search for stored devices that aren't connected: 20 s, doubling to 5 min while nothing new turns up; paused while the window is hidden. */
+  function scheduleRetry() {
+    clearTimeout(retryTimer)
+    retryTimer = setTimeout(async () => {
+      const before = missing()
+      if (before && !document.hidden) await searchStored()
+      const after = missing()
+      retryDelay = after && after >= before ? Math.min(retryDelay * 2, RETRY_MAX_MS) : RETRY_MS
+      scheduleRetry()
+    }, retryDelay)
+  }
+
   async function readStored(kind: DeviceKind): Promise<StoredDevice | undefined> {
     try {
       return JSON.parse((await api.settings.get(`device.${kind}`)) || 'null') ?? undefined
@@ -279,7 +295,7 @@ export function createBluetoothManager(): DeviceManager {
         if (!devs[kind]) ev.setStatus(kind, stored[kind] ? 'searching' : 'none', stored[kind]?.name ?? null)
       }
       void searchStored()
-      retryTimer ??= setInterval(searchStored, RETRY_MS)
+      scheduleRetry()
     },
 
     async forget(kind) {

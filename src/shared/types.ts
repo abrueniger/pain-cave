@@ -212,6 +212,8 @@ export interface Api {
   }
   /** True when started with PAINCAVE_FAKE=1 (simulated devices). */
   fakeDevices: boolean
+  /** process.platform in Electron ('darwin', 'win32', …); 'browser' in the plain-browser UI preview. */
+  platform: string
 }
 
 export type SettingKey =

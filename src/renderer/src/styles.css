@@ -177,3 +177,10 @@ input.invalid, input[aria-invalid='true'] { border-color: var(--danger); box-sha
 .stub { border: 1px dashed var(--border); padding: 16px; color: var(--muted); }
 
 .thumb { display: inline-flex; padding: 6px 8px; background: var(--input); border: 1px solid var(--border); border-radius: var(--r-md); }
+
+/* Frameless window: top bars double as the title bar */
+.appbar, .ride-bar { -webkit-app-region: drag; }
+.appbar button, .appbar a, .device-pill, .ride-bar button, .ride-bar a, .ride-dots { -webkit-app-region: no-drag; }
+[data-platform='darwin'] .appbar, [data-platform='darwin'] .ride-bar { padding-left: 96px; }
+[data-platform='win32'] .appbar, [data-platform='win32'] .ride-bar,
+[data-platform='linux'] .appbar, [data-platform='linux'] .ride-bar { padding-right: 156px; }

@@ -117,5 +117,6 @@ export const mockApi: Api = {
       await (window as { __paincaveGesture?: () => unknown }).__paincaveGesture?.()
     }
   },
-  fakeDevices: true
+  fakeDevices: true,
+  platform: 'browser'
 }

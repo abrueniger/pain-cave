@@ -42,7 +42,8 @@ const api: Api = {
     select: id => ipcRenderer.send('bt:select', id),
     runWithGesture: invoke('bt:gesture')
   },
-  fakeDevices: process.env.PAINCAVE_FAKE === '1'
+  fakeDevices: process.env.PAINCAVE_FAKE === '1',
+  platform: process.platform
 }
 
 contextBridge.exposeInMainWorld('api', api)

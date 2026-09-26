@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, type OpenDialogOptions } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, type OpenDialogOptions } from 'electron'
 import { readFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
 import { openDb } from './db'
@@ -37,9 +37,16 @@ app.whenReady().then(() => {
     height: 900,
     minWidth: 1280,
     minHeight: 800,
-    backgroundColor: '#141413',
+    backgroundColor: '#111110',
+    // No native title bar: the app's own top bar is the drag region, window controls sit on top of it
+    titleBarStyle: 'hidden',
+    ...(process.platform === 'darwin'
+      ? { trafficLightPosition: { x: 20, y: 24 } }
+      : { titleBarOverlay: { color: '#00000000', symbolColor: '#b8b5ac', height: 64 } }),
     webPreferences: { preload: join(__dirname, '../preload/index.js'), sandbox: false }
   })
+  // Windows/Linux: drop the default File/Edit/View menu bar. macOS keeps its system menu (⌘Q, copy/paste).
+  if (process.platform !== 'darwin') Menu.setApplicationMenu(null)
 
   // Web Bluetooth: Electron has no chooser UI, the renderer shows the candidates and picks one.
   // A new requestDevice() makes Chromium drop the pending chooser, so keeping the latest callback is enough.

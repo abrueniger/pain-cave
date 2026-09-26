@@ -1,0 +1,60 @@
+{
+  "name": "paincave",
+  "productName": "PainCave",
+  "version": "0.1.0",
+  "description": "ERG training for the Zwift Ride and Wahoo KICKR CORE 2",
+  "private": true,
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "dev:fake": "cross-env PAINCAVE_FAKE=1 electron-vite dev",
+    "build": "electron-vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "build:mac": "electron-vite build && electron-builder --mac --arm64",
+    "build:win": "electron-vite build && electron-builder --win"
+  },
+  "build": {
+    "appId": "ch.brueniger.paincave",
+    "productName": "PainCave",
+    "files": [
+      "out/**/*"
+    ],
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.healthcare-fitness",
+      "identity": null,
+      "extendInfo": {
+        "NSBluetoothAlwaysUsageDescription": "PainCave connects to your trainer, Zwift Ride controllers and heart rate strap.",
+        "NSBluetoothPeripheralUsageDescription": "PainCave connects to your trainer, Zwift Ride controllers and heart rate strap."
+      }
+    },
+    "win": {
+      "target": "dir"
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/web-bluetooth": "^0.0.21",
+    "@vitejs/plugin-react": "^5.2.0",
+    "cross-env": "^10.1.0",
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0",
+    "typescript": "^7.0.2",
+    "vite": "^7.3.6",
+    "vitest": "^5.0.2"
+  },
+  "dependencies": {
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "uplot": "^1.6.32"
+  },
+  "allowScripts": {
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.2": true,
+    "electron-winstaller": false
+  }
+}

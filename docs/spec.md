@@ -155,7 +155,7 @@ The workout ends automatically after the last block.
 - List: date, mode, workout name, duration, avg power, avg HR, kJ.
 - Detail: static ride chart + summary (same screen as the post-ride summary). Delete.
 
-## Data (SQLite, `better-sqlite3`)
+## Data (SQLite via built-in `node:sqlite`, no native module)
 
 Stored in the Electron `userData` directory.
 

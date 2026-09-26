@@ -32,6 +32,14 @@ export function RideScreen({ nav, mode, workoutId }: { nav: Nav; mode: 'free' | 
 
   useEffect(() => devices.on('status', () => bump((n) => n + 1)), [])
 
+  // Chart takes the height left below the tiles
+  const [winH, setWinH] = useState(window.innerHeight)
+  useEffect(() => {
+    const onResize = () => setWinH(window.innerHeight)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
   useEffect(() => {
     let c: RideController | null = null
     let unsub: (() => void) | null = null
@@ -185,7 +193,7 @@ export function RideScreen({ nav, mode, workoutId }: { nav: Nav; mode: 'free' | 
         </div>
       </div>
 
-      <RideChart blocks={view.blocks} samples={view.samples} positionS={view.elapsedS} offset={view.offset} height={260} />
+      <RideChart blocks={view.blocks} samples={view.samples} positionS={view.elapsedS} offset={view.offset} height={Math.max(260, winH - 480)} />
 
       <footer className="ride-footer">
         <span>Avg power <b>{num(stats.avgPower)} W</b></span>

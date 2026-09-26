@@ -102,7 +102,7 @@ export function RideChart({ blocks, samples, positionS, offset = 0, height = 220
         { scale: 'w', stroke: c('--target'), width: 2, paths: uPlot.paths.stepped!({ align: 1 }) },
         { scale: 'w', stroke: c('--power'), width: 2 },
         { scale: 'bpm', stroke: c('--hr'), width: 1.5 }
-      ],
+      ].map((sr, i) => (i ? { ...sr, points: { show: false } } : sr)),
       hooks: {
         draw: [
           (u) => {

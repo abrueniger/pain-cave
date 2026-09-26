@@ -26,14 +26,15 @@ export function createFakeManager(): DeviceManager {
   })
 
   setInterval(() => {
-    const active = pedaling && !released
-    power = active ? power + (target - power) * 0.3 : 0
+    // Like the real trainer: released (no ERG) still reports cadence and a little power while pedaling
+    const goal = released ? 30 : target
+    power = pedaling ? power + (goal - power) * 0.3 : 0
     if (ev.status('trainer').status === 'connected') {
-      const p = active ? Math.max(0, Math.round(power + noise(5))) : 0
+      const p = pedaling ? Math.max(0, Math.round(power + noise(5))) : 0
       ev.emit('trainer', {
         power: p,
-        cadence: active ? Math.round(88 + noise(3)) : 0,
-        speedKmh: active ? Math.round(36 * Math.cbrt(p / 0.25)) / 10 : 0
+        cadence: pedaling ? Math.round(88 + noise(3)) : 0,
+        speedKmh: pedaling ? Math.round(36 * Math.cbrt(p / 0.25)) / 10 : 0
       })
     }
     hr += (60 + 0.4 * power - hr) * 0.05

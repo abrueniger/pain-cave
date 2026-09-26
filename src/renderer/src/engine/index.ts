@@ -51,6 +51,7 @@ export function createRideController(opts: {
   let freeTarget: number = FREE_RIDE_START_WATTS
   let offset = 0
   let sent: number | null = null
+  let ending = false
   let lastPedalAt = 0
   let trainer: { d: TrainerData; at: number } | null = null
   let hr: { bpm: number; at: number } | null = null
@@ -162,7 +163,7 @@ export function createRideController(opts: {
       powers.push({ w: d.power, at: now })
       if (d.cadence > 0) {
         lastPedalAt = now
-        if (state === 'autoPaused') {
+        if (state === 'autoPaused' && !ending) {
           state = 'running'
           send(target())
           emit()
@@ -176,14 +177,16 @@ export function createRideController(opts: {
   ]
 
   async function end() {
-    if (state === 'ready' || state === 'finished') return
-    state = 'finished'
+    if (state === 'ready' || state === 'finished' || ending) return
+    ending = true
     if (timer) clearInterval(timer)
     timer = null
     release()
-    emit()
     await flush()
-    if (rideId != null) await api.rides.finish(rideId, rideStats(samples, elapsedS))
+    // 'finished' only once the stats are stored: the summary screen reads them from the DB
+    if (rideId != null) await api.rides.finish(rideId, rideStats(samples, elapsedS)).catch((e) => console.error('finish failed', e))
+    state = 'finished'
+    emit()
   }
 
   const ctrl: RideController = {

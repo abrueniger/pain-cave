@@ -19,12 +19,12 @@ describe('db', () => {
 
     const updated = db.workouts.save({ id: w.id, name: 'B2', blocks: blocks.slice(1) })
     expect(updated).toMatchObject({ id: w.id, name: 'B2', blocks: blocks.slice(1), createdAt: w.createdAt })
-    expect(db.workouts.list().map(x => x.name)).toEqual(['A', 'B2'])
+    expect(db.workouts.list().map(x => x.name)).toEqual(['A', 'B2', 'Example'])
     expect(db.workouts.get(w.id)).toEqual(updated)
 
     db.workouts.delete(w.id)
     expect(db.workouts.get(w.id)).toBeNull()
-    expect(db.workouts.list()).toHaveLength(1)
+    expect(db.workouts.list()).toHaveLength(2)
   })
 
   it('records, finishes, lists and deletes rides with samples', () => {

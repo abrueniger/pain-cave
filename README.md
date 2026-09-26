@@ -29,9 +29,31 @@ service, so avoid updating it via Zwift Companion.
 Close the Wahoo app, Zwift and Zwift Companion before riding – the trainer and the
 controllers usually accept only one app at a time.
 
-## Status
+## Getting started
 
-Work in progress. See [docs/spec.md](docs/spec.md) for the V1 scope.
+Requires Node 24+.
+
+```bash
+npm install
+npm run dev        # real Bluetooth devices
+npm run dev:fake   # simulated trainer, controller and HR strap (F8 toggles pedaling)
+npm test
+```
+
+Build the macOS app on a Mac (Apple Silicon):
+
+```bash
+npm run build:mac  # → dist/PainCave-<version>-arm64.dmg
+```
+
+The build is unsigned: open it once via right-click → Open, or run
+`xattr -cr /Applications/PainCave.app`.
+
+Pair your devices on the **Devices** screen once; they reconnect automatically on
+the next start. Keyboard fallback during a ride: ↑/↓ ±10 W, Shift+↑/↓ ±50 W,
+Space pause/resume.
+
+See [docs/spec.md](docs/spec.md) for the V1 scope and the verified hardware protocol.
 
 ## Disclaimer
 

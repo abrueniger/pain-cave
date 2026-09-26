@@ -74,6 +74,19 @@ export function openDb(path: string) {
     const r = db.prepare('SELECT * FROM workouts WHERE id = ?').get(id)
     return r ? toWorkout(r) : null
   }
+  // Fresh database: seed the example workout from the spec once
+  if ((db.prepare('PRAGMA user_version').get() as { user_version: number }).user_version === 0) {
+    const blocks = [
+      { type: 'ramp', durationS: 300, startWatts: 100, endWatts: 150 },
+      { type: 'steady', durationS: 600, watts: 170 },
+      { type: 'steady', durationS: 30, watts: 300 },
+      { type: 'steady', durationS: 300, watts: 170 },
+      { type: 'ramp', durationS: 300, startWatts: 150, endWatts: 100 }
+    ]
+    db.prepare('INSERT INTO workouts (name, blocks_json, created_at, updated_at) VALUES (?, ?, ?, ?)')
+      .run('Example', JSON.stringify(blocks), now(), now())
+    db.exec('PRAGMA user_version = 1')
+  }
   const insertSample = db.prepare(
     'INSERT INTO samples (ride_id, t_s, power, target_power, cadence, hr, speed) VALUES (?, ?, ?, ?, ?, ?, ?)'
   )

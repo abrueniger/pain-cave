@@ -87,6 +87,18 @@ export function openDb(path: string) {
       .run('Example', JSON.stringify(blocks), now(), now())
     db.exec('PRAGMA user_version = 1')
   }
+  // Rides that never got finish() (crash, killed app) keep their samples but have 0 stats: recompute them
+  db.exec(`
+    UPDATE rides SET
+      duration_s = (SELECT COUNT(*) FROM samples s WHERE s.ride_id = rides.id),
+      avg_power = COALESCE((SELECT ROUND(AVG(power)) FROM samples s WHERE s.ride_id = rides.id), 0),
+      max_power = COALESCE((SELECT MAX(power) FROM samples s WHERE s.ride_id = rides.id), 0),
+      avg_hr = (SELECT ROUND(AVG(hr)) FROM samples s WHERE s.ride_id = rides.id),
+      max_hr = (SELECT MAX(hr) FROM samples s WHERE s.ride_id = rides.id),
+      avg_cadence = COALESCE((SELECT ROUND(AVG(cadence)) FROM samples s WHERE s.ride_id = rides.id), 0),
+      kj = COALESCE((SELECT ROUND(SUM(power) / 100.0) / 10 FROM samples s WHERE s.ride_id = rides.id), 0)
+    WHERE ended_at IS NULL AND duration_s = 0
+  `)
   const insertSample = db.prepare(
     'INSERT INTO samples (ride_id, t_s, power, target_power, cadence, hr, speed) VALUES (?, ?, ?, ?, ?, ?, ?)'
   )

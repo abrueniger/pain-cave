@@ -40,7 +40,9 @@ npm run dev:fake   # simulated trainer, controller and HR strap (F8 toggles peda
 npm test
 ```
 
-Build the macOS app on a Mac (Apple Silicon):
+Every push to `main` builds the macOS app on GitHub Actions: open the latest
+[CI run](https://github.com/abrueniger/pain-cave/actions/workflows/ci.yml) and download
+the **PainCave-mac** artifact (`.dmg`). To build it yourself on a Mac (Apple Silicon):
 
 ```bash
 npm run build:mac  # → dist/PainCave-<version>-arm64.dmg

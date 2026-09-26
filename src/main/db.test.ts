@@ -1,3 +1,6 @@
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { openDb } from './db'
 import type { Block, Sample } from '../shared/types'
@@ -65,5 +68,19 @@ describe('db', () => {
     db.settings.set('maxHr', '180')
     db.settings.set('maxHr', '185')
     expect(db.settings.get('maxHr')).toBe('185')
+  })
+
+  it('recomputes stats of rides that were never finished (crash)', () => {
+    const path = join(mkdtempSync(join(tmpdir(), 'paincave-')), 'test.db')
+    let db = openDb(path)
+    const id = db.rides.start({ mode: 'free', workoutId: null, workoutName: null, blocks: null })
+    db.rides.appendSamples(id, [0, 1, 2, 3].map((t) => ({ ...sample(t), hr: 120 + t })))
+    db.close()
+
+    db = openDb(path)
+    expect(db.rides.get(id)!.ride).toMatchObject({
+      endedAt: null, durationS: 4, avgPower: 152, maxPower: 153, avgHr: 122, maxHr: 123, avgCadence: 90, kj: 0.6
+    })
+    db.close()
   })
 })

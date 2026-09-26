@@ -11,12 +11,16 @@ import { RideChart } from '../components/RideChart'
 import { ConfirmButton, IconCheck, RideReport } from '../components/RideReport'
 import { TopBar } from '../components/TopBar'
 import { IconAlert, IconPause, IconPlay, IconStop } from '../components/icons'
+import { beep } from '../components/beep'
 
 const NONE = '—'
 const watts = (b: Block) => (b.type === 'steady' ? `${b.watts} W` : `${b.startWatts}→${b.endWatts} W`)
 const num = (v: number | null | undefined) => (v == null ? NONE : String(Math.round(v)))
 const signed = (w: number) => `${w < 0 ? '−' : '+'} ${Math.abs(w)}`
 const SHIFT_HINT = 'Shift right ±10 W · left ±50 W'
+const COUNTDOWN_S = 5
+const clampW = (w: number) => Math.min(LIMITS.maxWatts, Math.max(LIMITS.minWatts, w))
+const startWatts = (b: Block) => (b.type === 'steady' ? b.watts : b.startWatts)
 
 function Value({ v, unit }: { v: string; unit?: string }) {
   return (
@@ -128,6 +132,33 @@ export function RideScreen({ nav, mode, workoutId }: { nav: Nav; mode: 'free' | 
     return () => window.removeEventListener('keydown', onKey)
   }, [ctrl])
 
+  // Keep the display awake while riding (laptop would dim/lock without input)
+  const riding = view != null && view.state !== 'ready' && view.state !== 'finished'
+  useEffect(() => {
+    if (!riding) return
+    let lock: WakeLockSentinel | null = null
+    const take = () => navigator.wakeLock?.request('screen').then((l) => (lock = l)).catch((e) => console.warn('wake lock', e))
+    const onVisible = () => document.visibilityState === 'visible' && take()
+    take()
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      lock?.release().catch(() => {})
+    }
+  }, [riding])
+
+  // Block-change cue: short beeps 3-2-1 before the next block, a high beep when it starts
+  const cue = useRef({ key: '', index: -1 })
+  useEffect(() => {
+    const b = view?.state === 'running' ? view.block : null
+    if (!b) return
+    if (cue.current.index !== -1 && b.index !== cue.current.index) beep(1320, 260)
+    cue.current.index = b.index
+    const key = `${b.index}:${b.remainingS}`
+    if (b.next && b.remainingS <= 3 && cue.current.key !== key) beep(880, 120)
+    cue.current.key = key
+  }, [view])
+
   // last known values, shown dimmed while a device reconnects mid-ride
   const last = useRef<{ power: number | null; cadence: number | null; hr: number | null }>({ power: null, cadence: null, hr: null })
 
@@ -188,6 +219,11 @@ export function RideScreen({ nav, mode, workoutId }: { nav: Nav; mode: 'free' | 
   const zone = hr == null ? 0 : Math.max(1, hrZone(hr, maxHr)) // below 50 % renders as Z1
   const dim = pausedState ? ' dim' : ''
 
+  const latest = view.samples[view.samples.length - 1]
+  const speed = trainerLost || !latest ? null : latest.speed
+  const distanceKm = view.samples.reduce((d, s) => d + (s.speed ?? 0) / 3600, 0)
+  const next = state === 'running' && view.block?.next && view.block.remainingS <= COUNTDOWN_S ? view.block : null
+
   const progress = view.block ? (1 - view.block.remainingS / view.block.block.durationS) * 100 : 0
   const pausedBadge = pausedState ? <span className="badge">Paused</span> : null
 
@@ -239,7 +275,7 @@ export function RideScreen({ nav, mode, workoutId }: { nav: Nav; mode: 'free' | 
           <Tile label="Power · 3 s" right={trainerLost && note} className={dim || (trainerLost ? ' dim' : '')}>
             <Value v={state === 'ready' ? NONE : num(power)} unit="W" />
           </Tile>
-          <Tile label="Target" right={<span className="erg">ERG</span>} className={`target${dim}`}>
+          <Tile label="Target" right={<span className="erg">ERG</span>} className={`target${dim}${next ? ' soon' : ''}`}>
             <Value v={num(view.target)} unit="W" />
             <div className="tile-bottom">
               {planned
@@ -250,7 +286,9 @@ export function RideScreen({ nav, mode, workoutId }: { nav: Nav; mode: 'free' | 
                     </span>
                   )
                 : <span className="small muted">ERG · {LIMITS.minWatts}–{LIMITS.maxWatts} W</span>}
-              <span className="small muted">Shift to adjust</span>
+              {next
+                ? <span className="next-up">next {clampW(startWatts(next.next!) + view.offset)} W in {next.remainingS}</span>
+                : <span className="small muted">Shift to adjust</span>}
             </div>
           </Tile>
         </div>
@@ -268,9 +306,18 @@ export function RideScreen({ nav, mode, workoutId }: { nav: Nav; mode: 'free' | 
               </div>
             )}
           </Tile>
-          <Tile label="Cadence" right={trainerLost && note} className={dim || (trainerLost ? ' dim' : '')}>
-            <Value v={num(cadence)} unit="rpm" />
-          </Tile>
+          <div className={`tile rtile trio${dim || (trainerLost ? ' dim' : '')}`}>
+            {([
+              ['Cadence', num(cadence), 'rpm'],
+              ['Speed', speed == null ? NONE : speed.toFixed(1), 'km/h'],
+              ['Distance', active ? distanceKm.toFixed(distanceKm < 10 ? 2 : 1) : NONE, 'km']
+            ] as const).map(([label, v, unit], i) => (
+              <div key={label} className="trio-item">
+                <div className="tile-top"><span className="tile-label">{label}</span>{i === 0 && trainerLost && note}</div>
+                <Value v={v} unit={unit} />
+              </div>
+            ))}
+          </div>
           {planned
             ? (
                 <Tile label="Block left" right={pausedBadge}>

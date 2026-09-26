@@ -72,7 +72,7 @@ function FtpCard() {
   )
 }
 
-export function DevicesScreen(_: { nav: Nav }) {
+export function SettingsScreen(_: { nav: Nav }) {
   const [, rerender] = useState(0)
   const [pairing, setPairing] = useState<DeviceKind | null>(null)
   const [picked, setPicked] = useState(false)
@@ -152,8 +152,8 @@ export function DevicesScreen(_: { nav: Nav }) {
   return (
     <main className="page devices">
       <header>
-        <h1>Devices</h1>
-        <p className="sub">Paired devices reconnect automatically when PainCave starts.</p>
+        <h1>Settings</h1>
+        <p className="sub">Devices, heart-rate zones and FTP. Paired devices reconnect automatically when PainCave starts.</p>
       </header>
 
       <div className="banner">

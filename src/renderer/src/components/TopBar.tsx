@@ -8,7 +8,7 @@ const TABS: { label: string; route: Route; match: Route['name'][] }[] = [
   { label: 'History', route: { name: 'history' }, match: ['history', 'rideDetail'] },
   { label: 'Progress', route: { name: 'progress' }, match: ['progress'] },
   { label: 'Achievements', route: { name: 'achievements' }, match: ['achievements'] },
-  { label: 'Devices', route: { name: 'devices' }, match: ['devices'] }
+  { label: 'Settings', route: { name: 'settings' }, match: ['settings'] }
 ]
 
 /** App frame: logo, tabs, device status. tabs=false for the post-ride summary (forces Save/Discard). */

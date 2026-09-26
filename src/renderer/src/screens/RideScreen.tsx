@@ -369,7 +369,7 @@ export function RideScreen({ nav, mode, workoutId }: { nav: Nav; mode: 'free' | 
                       </>
                     )}
                 <button className="primary xl start-btn" disabled={!trainerOk} onClick={start}><IconPlay />Start</button>
-                {!trainerOk && <button className="link" onClick={() => nav({ name: 'devices' })}>Open Devices</button>}
+                {!trainerOk && <button className="link" onClick={() => nav({ name: 'settings' })}>Open Settings</button>}
               </div>
             </div>
           )}

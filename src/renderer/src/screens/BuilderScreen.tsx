@@ -287,7 +287,7 @@ export function BuilderScreen({ nav, workoutId }: { nav: Nav; workoutId: number 
           </div>
           {unit === 'ftp' && (
             <span className="bld-ftp">
-              FTP {ftp} W · <button className="link" onClick={() => nav({ name: 'devices' })}>edit in Devices</button>
+              FTP {ftp} W · <button className="link" onClick={() => nav({ name: 'settings' })}>edit in Settings</button>
             </span>
           )}
         </div>

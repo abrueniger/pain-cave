@@ -43,6 +43,8 @@ const toSample = (r: Row): Sample => ({
   speed: r.speed
 })
 
+export const SCHEMA_VERSION = 3 // bump with every migration below
+
 export function openDb(path: string) {
   const db = new DatabaseSync(path)
   db.exec(`
@@ -95,6 +97,11 @@ export function openDb(path: string) {
   const getWorkout = (id: number) => {
     const r = db.prepare('SELECT * FROM workouts WHERE id = ?').get(id)
     return r ? toWorkout(r) : null
+  }
+  // Before migrating an existing database, keep a consistent copy next to it (paincave-backup-v2-<time>.db)
+  if (version() > 0 && version() < SCHEMA_VERSION && path !== ':memory:') {
+    const backup = `${path.replace(/\.db$/, '')}-backup-v${version()}-${Date.now()}.db`
+    db.exec(`VACUUM INTO '${backup.replace(/'/g, "''")}'`)
   }
   // Fresh database: seed the example workout from the spec once
   if (version() === 0) {

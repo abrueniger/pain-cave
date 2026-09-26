@@ -18,7 +18,7 @@ const hm = (s: number) => {
   return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`
 }
 
-/** Suggestion to adopt the FTP estimate; shared with the Devices screen. */
+/** Suggestion to adopt the FTP estimate; shared with the Settings screen. */
 export function FtpSuggestion({ estimate }: { estimate: number | null | undefined }) {
   const ftp = useFtp()
   if (estimate === undefined) return null
@@ -116,7 +116,7 @@ function FtpCard({ estimate }: { estimate: number | null }) {
       <div>
         <span className="label">Current</span>
         <div><span className="num ftp-num">{ftp}</span><span className="unit">W</span></div>
-        <p className="small muted ftp-why">Workouts in % FTP use this value. Change it on the Devices screen.</p>
+        <p className="small muted ftp-why">Workouts in % FTP use this value. Change it in Settings.</p>
       </div>
       <FtpSuggestion estimate={estimate} />
     </section>
@@ -132,7 +132,7 @@ function Zones({ weeks }: { weeks: StatsOverview['weeks'] }) {
     <section className="card zones">
       <header><h2>Time in heart-rate zones</h2><span className="small muted">Last 12 weeks</span></header>
       {sum === 0
-        ? <p className="muted empty-line">No heart-rate data yet. Pair a strap on the Devices screen.</p>
+        ? <p className="muted empty-line">No heart-rate data yet. Pair a strap in Settings.</p>
         : (
             <>
               <div className="bars stacked">

@@ -20,7 +20,7 @@ The trainer runs in ERG mode; the Ride's shift paddles change the target watts.
 | Zwift Ride controllers | Zwift custom BLE service ("RideOn" handshake, protobuf button events) | no – keyboard fallback |
 | Heart rate strap | Standard BLE Heart Rate Service | no – HR tile stays empty |
 
-- **Devices screen** with three slots (Trainer, Controller, HR). "Scan" lists devices
+- **Settings screen** (devices, HR zones, FTP) with three device slots (Trainer, Controller, HR). "Scan" lists devices
   filtered by service; the chosen device's name/id is stored in `settings`.
 - On app start, stored devices reconnect automatically (Electron's device chooser
   is intercepted and the stored device is picked without a dialog).

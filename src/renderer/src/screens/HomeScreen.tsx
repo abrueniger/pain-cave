@@ -115,7 +115,7 @@ export function HomeScreen({ nav }: { nav: Nav }) {
       <section className="card devs">
         <header>
           <h2>Devices</h2>
-          <More onClick={() => nav({ name: 'devices' })}>Manage</More>
+          <More onClick={() => nav({ name: 'settings' })}>Manage</More>
         </header>
         {DEVICES.map(({ kind, label, Icon }) => {
           const s = devices.status(kind)

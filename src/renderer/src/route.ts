@@ -1,6 +1,6 @@
 export type Route =
   | { name: 'home' }
-  | { name: 'devices' }
+  | { name: 'settings' } // devices, HR zones, FTP
   | { name: 'workouts' }
   | { name: 'builder'; workoutId: number | null } // null = new workout
   | { name: 'ride'; mode: 'free' }

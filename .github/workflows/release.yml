@@ -1,0 +1,68 @@
+name: Release
+
+# Push a tag like v0.2.0 (matching package.json "version") to publish a GitHub release
+# with the macOS dmg and a Windows zip.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  mac:
+    runs-on: macos-latest # Apple Silicon
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build:mac -- --publish never
+      - uses: actions/upload-artifact@v7
+        with:
+          name: mac
+          path: dist/*.dmg
+          if-no-files-found: error
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx electron-vite build && npx electron-builder --win zip --publish never
+      - uses: actions/upload-artifact@v7
+        with:
+          name: windows
+          path: dist/*.zip
+          if-no-files-found: error
+
+  release:
+    needs: [mac, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: files
+          merge-multiple: true
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" files/* --repo "$GITHUB_REPOSITORY" \
+            --title "PainCave $GITHUB_REF_NAME" --generate-notes --notes "$(cat <<'NOTES'
+          **Downloads:** `.dmg` for macOS (Apple Silicon), `.zip` for Windows (unzip, run `PainCave.exe`).
+
+          The builds are not code-signed. macOS: right-click the app → Open the first time
+          (or `xattr -cr /Applications/PainCave.app`). Windows SmartScreen: More info → Run anyway.
+
+          Updating keeps your rides: the database lives outside the app and is backed up
+          automatically before a schema migration.
+          NOTES
+          )"

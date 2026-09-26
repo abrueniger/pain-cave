@@ -1,6 +1,6 @@
-import { mkdtempSync } from 'node:fs'
+import { mkdtempSync, readdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { describe, expect, it } from 'vitest'
 import { openDb } from './db'
@@ -197,6 +197,11 @@ describe('db', () => {
     const db = openDb(path)
     expect(db.achievements.gains(1).unlocked.map(u => u.kind === 'special' && u.id)).toEqual(['firstRide', 'firstPlanned', 'asPlanned'])
     db.close()
+    const backups = readdirSync(dirname(path)).filter(f => /^test-backup-v2-\d+\.db$/.test(f))
+    expect(backups).toHaveLength(1)
+    const old = new DatabaseSync(join(dirname(path), backups[0]))
+    expect(old.prepare('PRAGMA user_version').get()).toEqual({ user_version: 2 })
+    old.close()
     const raw = new DatabaseSync(path)
     expect(raw.prepare('PRAGMA user_version').get()).toEqual({ user_version: 3 })
     expect(JSON.parse(raw.prepare('SELECT plan_json FROM rides').get()!.plan_json as string)).toEqual({ minOffset: -1, plus10S: 0, atFtpS: 60 })

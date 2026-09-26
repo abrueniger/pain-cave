@@ -4,7 +4,7 @@ import { devices } from './devices'
 import { guardNav, type Route } from './route'
 import { TopBar } from './components/TopBar'
 import { HomeScreen } from './screens/HomeScreen'
-import { DevicesScreen } from './screens/DevicesScreen'
+import { SettingsScreen } from './screens/SettingsScreen'
 import { WorkoutsScreen } from './screens/WorkoutsScreen'
 import { BuilderScreen } from './screens/BuilderScreen'
 import { RideScreen } from './screens/RideScreen'
@@ -28,7 +28,7 @@ export function App() {
 
   const screen = (() => {
     switch (route.name) {
-      case 'devices': return <DevicesScreen nav={nav} />
+      case 'settings': return <SettingsScreen nav={nav} />
       case 'workouts': return <WorkoutsScreen nav={nav} />
       case 'builder': return <BuilderScreen nav={nav} workoutId={route.workoutId} />
       case 'history': return <HistoryScreen nav={nav} />

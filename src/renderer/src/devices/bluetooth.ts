@@ -20,7 +20,7 @@ const OPTIONS: Record<DeviceKind, RequestDeviceOptions> = {
 }
 const SEARCH_TIMEOUT_MS = 15000
 const RETRY_MS = 20000
-const RETRY_MAX_MS = 300000 // back off to 5 min while a stored device stays away (BLE scanning costs power)
+const RETRY_MAX_MS = 60000 // back off to 1 min while a stored device stays away (scanning competes with live connections)
 const FIRMWARE_HINT =
   'Zwift Ride service not found. Controller firmware newer than 1.2.0 hides it – do not update the firmware.'
 
@@ -236,7 +236,7 @@ export function createBluetoothManager(): DeviceManager {
 
   const missing = () => KINDS.filter((k) => stored[k] && !devs[k]?.gatt?.connected).length
 
-  /** Background search for stored devices that aren't connected: 20 s, doubling to 5 min while nothing new turns up; paused while the window is hidden. */
+  /** Background search for stored devices that aren't connected: 20 s, doubling to 1 min while nothing new turns up; paused while the window is hidden. */
   function scheduleRetry() {
     clearTimeout(retryTimer)
     retryTimer = setTimeout(async () => {

@@ -1,0 +1,4 @@
+.venv/
+*.log
+*.out
+__pycache__/

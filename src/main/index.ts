@@ -1,16 +1,36 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
-import { join } from 'node:path'
+import { app, BrowserWindow, dialog, ipcMain, type OpenDialogOptions } from 'electron'
+import { readFileSync } from 'node:fs'
+import { basename, join } from 'node:path'
 import { openDb } from './db'
-import type { BluetoothCandidate } from '../shared/types'
+import { parseZwo } from '../shared/zwo'
+import type { BluetoothCandidate, Workout } from '../shared/types'
 
 app.whenReady().then(() => {
   const db = openDb(join(app.getPath('userData'), 'paincave.db'))
-  for (const group of ['workouts', 'rides', 'settings'] as const) {
+  for (const group of ['workouts', 'rides', 'stats', 'settings'] as const) {
     for (const [name, fn] of Object.entries(db[group])) {
       ipcMain.handle(`${group}:${name}`, (_e, ...args) => (fn as (...a: unknown[]) => unknown)(...args))
     }
   }
   app.on('will-quit', () => db.close())
+  ipcMain.handle('workouts:importZwo', async e => {
+    const opts: OpenDialogOptions = {
+      title: 'Import Zwift workouts',
+      properties: ['openFile', 'multiSelections'],
+      filters: [{ name: 'Zwift workouts', extensions: ['zwo'] }]
+    }
+    const win = BrowserWindow.fromWebContents(e.sender)
+    const { canceled, filePaths } = await (win ? dialog.showOpenDialog(win, opts) : dialog.showOpenDialog(opts))
+    const result = { imported: [] as Workout[], errors: [] as { file: string; message: string }[] }
+    for (const path of canceled ? [] : filePaths) {
+      try {
+        result.imported.push(db.workouts.save(parseZwo(readFileSync(path, 'utf8'), basename(path))))
+      } catch (err) {
+        result.errors.push({ file: basename(path), message: err instanceof Error ? err.message : String(err) })
+      }
+    }
+    return result
+  })
 
   const win = new BrowserWindow({
     width: 1440,

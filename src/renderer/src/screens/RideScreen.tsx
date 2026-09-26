@@ -2,8 +2,9 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import '../components/ride.css'
 import { api } from '../api'
 import { devices, type DeviceKind } from '../devices'
-import { createRideController, hrZone, workoutDurationS, type RideController, type RideView } from '../engine'
-import { DEFAULT_MAX_HR, LIMITS, type Block, type RideSummary, type Sample } from '../../../shared/types'
+import { createRideController, hrZone, workoutDurationS, type ResolvedBlock, type RideController, type RideView } from '../engine'
+import { DEFAULT_MAX_HR, LIMITS, type RideSummary, type Sample } from '../../../shared/types'
+import { loadFtp } from '../ftp'
 import type { Nav } from '../route'
 import { formatDuration } from '../format'
 import { DeviceDots } from '../components/DeviceDots'
@@ -14,13 +15,14 @@ import { IconAlert, IconPause, IconPlay, IconStop } from '../components/icons'
 import { beep } from '../components/beep'
 
 const NONE = '—'
-const watts = (b: Block) => (b.type === 'steady' ? `${b.watts} W` : `${b.startWatts}→${b.endWatts} W`)
+const watts = (b: ResolvedBlock) => (b.type === 'steady' ? `${b.watts} W` : `${b.startWatts}→${b.endWatts} W`)
+const title = (b: ResolvedBlock) => (b.type === 'ramp' ? 'Ramp' : b.label ?? 'Steady')
 const num = (v: number | null | undefined) => (v == null ? NONE : String(Math.round(v)))
 const signed = (w: number) => `${w < 0 ? '−' : '+'} ${Math.abs(w)}`
 const SHIFT_HINT = 'Shift right ±10 W · left ±50 W'
 const COUNTDOWN_S = 5
 const clampW = (w: number) => Math.min(LIMITS.maxWatts, Math.max(LIMITS.minWatts, w))
-const startWatts = (b: Block) => (b.type === 'steady' ? b.watts : b.startWatts)
+const startWatts = (b: ResolvedBlock) => (b.type === 'steady' ? b.watts : b.startWatts)
 
 function Value({ v, unit }: { v: string; unit?: string }) {
   return (
@@ -60,11 +62,11 @@ function Centre({ view }: { view: RideView }) {
   return (
     <>
       <span className="rb-chip">Block {index + 1}/{count}</span>
-      <strong className="rb-title">{block.type === 'steady' ? 'Steady' : 'Ramp'} {watts(block)}</strong>
+      <strong className="rb-title">{title(block)} {watts(block)}</strong>
       {next && (
         <>
           <span className="rb-div" />
-          <span className="rb-sub">next <b>{formatDuration(next.durationS)} @ {watts(next)}</b></span>
+          <span className="rb-sub">next <b>{next.type === 'steady' && next.label ? `${next.label} · ` : ''}{formatDuration(next.durationS)} @ {watts(next)}</b></span>
         </>
       )}
     </>
@@ -89,10 +91,11 @@ export function RideScreen({ nav, mode, workoutId }: { nav: Nav; mode: 'free' | 
     let cancelled = false
     async function load() {
       const hrMax = Number(await api.settings.get('maxHr')) || DEFAULT_MAX_HR
+      const ftp = await loadFtp()
       const workout = mode === 'planned' && workoutId != null ? await api.workouts.get(workoutId) : null
       if (mode === 'planned' && !workout) throw new Error('Workout not found')
       if (cancelled) return
-      c = createRideController({ devices, api, mode, workout, maxHr: hrMax })
+      c = createRideController({ devices, api, mode, workout, maxHr: hrMax, ftp })
       setMaxHr(hrMax)
       setCtrl(c)
       setView(c.view())

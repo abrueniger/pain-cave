@@ -8,7 +8,8 @@ const api: Api = {
     list: invoke('workouts:list'),
     get: invoke('workouts:get'),
     save: invoke('workouts:save'),
-    delete: invoke('workouts:delete')
+    delete: invoke('workouts:delete'),
+    importZwo: invoke('workouts:importZwo')
   },
   rides: {
     start: invoke('rides:start'),
@@ -17,6 +18,10 @@ const api: Api = {
     list: invoke('rides:list'),
     get: invoke('rides:get'),
     delete: invoke('rides:delete')
+  },
+  stats: {
+    overview: invoke('stats:overview'),
+    prs: invoke('stats:prs')
   },
   settings: {
     get: invoke('settings:get'),

@@ -3,13 +3,15 @@ import type { Block, RideMode, RideStats, Sample } from '../../../shared/types'
 
 export type RideState = 'ready' | 'running' | 'paused' | 'autoPaused' | 'finished'
 export type HrZone = 0 | 1 | 2 | 3 | 4 | 5 // 0 = no data or below Z1
+/** Output of resolveBlocks: absolute watts, intervals expanded. All a ride ever sees. */
+export type ResolvedBlock = Exclude<Block, { type: 'intervals' }>
 
 export interface BlockPosition {
   index: number
   count: number
-  block: Block
+  block: ResolvedBlock
   remainingS: number
-  next: Block | null
+  next: ResolvedBlock | null
 }
 
 /** Snapshot for the UI. A new object is emitted ~1 Hz and on every state/target change. */
@@ -17,7 +19,7 @@ export interface RideView {
   state: RideState
   mode: RideMode
   workoutName: string | null
-  blocks: Block[] | null
+  blocks: ResolvedBlock[] | null
   elapsedS: number // moving time
   target: number // effective ERG target (plan + offset, clamped) in W
   planTarget: number | null // planned: plan watts now without offset; free: null

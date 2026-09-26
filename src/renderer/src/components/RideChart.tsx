@@ -3,11 +3,11 @@ import uPlot from 'uplot'
 import 'uplot/dist/uPlot.min.css'
 import './ride.css'
 import { LIMITS, type Block, type Sample } from '../../../shared/types'
-import { planTargetAt, workoutDurationS } from '../engine'
+import { planTargetAt, workoutDurationS, type ResolvedBlock } from '../engine'
 import { formatDuration } from '../format'
 
 export interface RideChartProps {
-  blocks: Block[] | null // planned: whole profile in the background; null = free ride
+  blocks: Block[] | null // resolved (resolvePlan / ride snapshot); planned: whole profile in the background; null = free ride
   samples: Sample[] // actual power, HR and (free ride) target step line
   positionS?: number // live: "now" marker with time chip; omit for static charts
   offset?: number // planned live: dashed plan+offset line from positionS on
@@ -31,7 +31,7 @@ const steps = (from: number, to: number, step: number) => {
 }
 
 /** Columns: x, plan A (before split), plan B (after split), plan+offset, free target, power, hr. */
-function buildData(kind: Kind, blocks: Block[] | null, samples: Sample[], positionS = 0, offset = 0, endS?: number) {
+function buildData(kind: Kind, blocks: ResolvedBlock[] | null, samples: Sample[], positionS = 0, offset = 0, endS?: number) {
   const lastS = samples.length ? Math.round(samples[samples.length - 1].tS) : 0
   if (!blocks) {
     const xs = samples.map((s) => Math.round(s.tS))
@@ -98,7 +98,7 @@ export function RideChart({ blocks, samples, positionS, offset = 0, paused, endS
   const fill = height === 'fill'
 
   const { data, xMax } = useMemo(
-    () => buildData(kind, blocks, samples, positionS, offset, endS),
+    () => buildData(kind, blocks as ResolvedBlock[] | null, samples, positionS, offset, endS),
     [kind, blocks, samples, positionS, offset, endS]
   )
   // read by uPlot hooks / range fns, which live as long as the instance

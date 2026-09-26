@@ -6,6 +6,7 @@ export type Route =
   | { name: 'ride'; mode: 'free' }
   | { name: 'ride'; mode: 'planned'; workoutId: number }
   | { name: 'history' }
+  | { name: 'progress' } // analytics across rides
   | { name: 'rideDetail'; rideId: number }
 
 export type Nav = (r: Route) => void

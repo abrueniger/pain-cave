@@ -47,3 +47,5 @@
 .pair-dialog .tip.prominent { color: var(--text); border-color: var(--border-strong); font-size: 14px; }
 .pair-dialog .tip.prominent svg { color: var(--accent-hi); }
 .pair-dialog .pd-foot { display: flex; justify-content: flex-end; padding: 16px 24px 20px; }
+.devices .ftp-right { max-width: 520px; padding-top: 4px; }
+.devices .ftp-right .ftp-suggest { border-top: 0; padding-top: 0; }

@@ -1,4 +1,15 @@
 .wo-head { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.wo-head-actions { display: flex; gap: 12px; }
+.wo-banner { align-items: flex-start; }
+.wo-banner.bad > svg { color: var(--warn); }
+.wo-banner-text { flex: 1; font-size: 14px; line-height: 20px; }
+.wo-banner-text strong { font-size: 15px; line-height: 20px; }
+.wo-banner button { margin: -6px -8px -6px 0; }
+.wo-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.wo-chip { height: 32px; padding: 0 14px; gap: 8px; border-radius: var(--r-pill); font-size: 13px; }
+.wo-chip span { color: var(--muted); font-variant-numeric: tabular-nums; }
+.wo-chip[aria-pressed='true'] { background: var(--accent-soft); border-color: transparent; color: var(--accent-hi); }
+.wo-chip[aria-pressed='true'] span { color: var(--accent-hi); opacity: 0.75; }
 .wo-sub { margin-top: 4px; color: var(--text-2); }
 
 .card.wo-list { list-style: none; margin: 0; padding: 0; overflow: hidden; }
@@ -7,7 +18,9 @@
 .wo-list li:hover { background: var(--surface-2); }
 .wo-list li.confirm { background: rgba(240, 86, 74, 0.06); }
 .wo-info { flex: 1; min-width: 0; }
-.wo-name { font-size: 18px; line-height: 24px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wo-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.wo-name { min-width: 0; font-size: 18px; line-height: 24px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wo-title .badge { flex: none; }
 .wo-meta { margin-top: 2px; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .wo-actions { display: flex; align-items: center; gap: 8px; }
 .wo-actions button.wo-trash { color: var(--danger); }

@@ -1,7 +1,7 @@
 import { FREE_RIDE_START_WATTS, LIMITS } from '../../../shared/types'
 import type { Api, RideMode, RideStats, Sample, Workout } from '../../../shared/types'
 import type { DeviceManager, Shift, TrainerData } from '../devices/types'
-import { blockAt, planTargetAt, workoutDurationS } from './plan'
+import { blockAt, planTargetAt, resolvePlan, workoutDurationS } from './plan'
 import type { HrZone, RideController, RideState, RideView } from './types'
 
 const SHIFT_W: Record<Shift, number> = { leftUp: 50, leftDown: -50, rightUp: 10, rightDown: -10 }
@@ -40,9 +40,10 @@ export function createRideController(opts: {
   mode: RideMode
   workout: Workout | null // required when mode === 'planned'
   maxHr: number
+  ftp: number // resolves % FTP workouts; stored with the ride
 }): RideController {
-  const { devices, api, mode, maxHr } = opts
-  const blocks = mode === 'planned' ? (opts.workout?.blocks ?? []) : null
+  const { devices, api, mode, maxHr, ftp } = opts
+  const blocks = mode === 'planned' ? (opts.workout ? resolvePlan(opts.workout, ftp) : []) : null
   const totalS = blocks ? workoutDurationS(blocks) : 0
 
   let state: RideState = 'ready'
@@ -201,7 +202,8 @@ export function createRideController(opts: {
         mode,
         workoutId: opts.workout?.id ?? null,
         workoutName: opts.workout?.name ?? null,
-        blocks
+        blocks,
+        ftp
       })
       state = 'running'
       lastPedalAt = Date.now()

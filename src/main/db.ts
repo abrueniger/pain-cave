@@ -1,11 +1,15 @@
 import { DatabaseSync } from 'node:sqlite'
-import type { Block, NewRide, RideStats, RideSummary, Sample, SettingKey, Workout } from '../shared/types'
+import { LIBRARY } from '../shared/library'
+import { overview, prs, rollingBests, type RideAgg } from '../shared/stats'
+import { DEFAULT_MAX_HR, type NewRide, type RideStats, type RideSummary, type Sample, type SettingKey, type Workout, type WorkoutInput } from '../shared/types'
 
 type Row = Record<string, any>
 
 const toWorkout = (r: Row): Workout => ({
   id: r.id,
   name: r.name,
+  unit: r.power_unit,
+  category: r.category,
   blocks: JSON.parse(r.blocks_json),
   createdAt: r.created_at,
   updatedAt: r.updated_at
@@ -25,7 +29,8 @@ const toRide = (r: Row): RideSummary => ({
   avgHr: r.avg_hr,
   maxHr: r.max_hr,
   avgCadence: r.avg_cadence,
-  kj: r.kj
+  kj: r.kj,
+  ftp: r.ftp
 })
 
 const toSample = (r: Row): Sample => ({
@@ -70,12 +75,22 @@ export function openDb(path: string) {
       throw e
     }
   }
+  const version = () => (db.prepare('PRAGMA user_version').get() as { user_version: number }).user_version
+  const insertWorkout = (w: WorkoutInput, t = now()) => Number(db.prepare(
+    'INSERT INTO workouts (name, power_unit, category, blocks_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
+  ).run(w.name, w.unit, w.category, JSON.stringify(w.blocks), t, t).lastInsertRowid)
+  const storeBests = (rideId: number) => {
+    const power = db.prepare('SELECT power FROM samples WHERE ride_id = ? ORDER BY t_s').all(rideId).map(r => r.power as number | null)
+    db.prepare('DELETE FROM ride_bests WHERE ride_id = ?').run(rideId)
+    for (const b of rollingBests(power))
+      db.prepare('INSERT INTO ride_bests (ride_id, duration_s, watts) VALUES (?, ?, ?)').run(rideId, b.durationS, b.watts)
+  }
   const getWorkout = (id: number) => {
     const r = db.prepare('SELECT * FROM workouts WHERE id = ?').get(id)
     return r ? toWorkout(r) : null
   }
   // Fresh database: seed the example workout from the spec once
-  if ((db.prepare('PRAGMA user_version').get() as { user_version: number }).user_version === 0) {
+  if (version() === 0) {
     const blocks = [
       { type: 'ramp', durationS: 300, startWatts: 100, endWatts: 150 },
       { type: 'steady', durationS: 600, watts: 170 },
@@ -87,7 +102,21 @@ export function openDb(path: string) {
       .run('Example', JSON.stringify(blocks), now(), now())
     db.exec('PRAGMA user_version = 1')
   }
+  // v2: power unit + category, FTP per ride, per-ride bests (backfilled), workout library
+  if (version() === 1) tx(() => {
+    db.exec(`
+      ALTER TABLE workouts ADD COLUMN power_unit TEXT NOT NULL DEFAULT 'watts';
+      ALTER TABLE workouts ADD COLUMN category TEXT;
+      ALTER TABLE rides ADD COLUMN ftp REAL;
+      CREATE TABLE IF NOT EXISTS ride_bests (ride_id INTEGER NOT NULL, duration_s INTEGER NOT NULL, watts REAL NOT NULL);
+      CREATE INDEX IF NOT EXISTS ride_bests_ride_id ON ride_bests (ride_id);
+    `)
+    for (const r of db.prepare('SELECT id FROM rides').all()) storeBests(r.id as number)
+    for (const w of LIBRARY) if (!db.prepare('SELECT 1 FROM workouts WHERE name = ?').get(w.name)) insertWorkout(w)
+    db.exec('PRAGMA user_version = 2')
+  })
   // Rides that never got finish() (crash, killed app) keep their samples but have 0 stats: recompute them
+  const crashed = db.prepare('SELECT id FROM rides WHERE ended_at IS NULL AND duration_s = 0').all()
   db.exec(`
     UPDATE rides SET
       duration_s = (SELECT COUNT(*) FROM samples s WHERE s.ride_id = rides.id),
@@ -99,6 +128,30 @@ export function openDb(path: string) {
       kj = COALESCE((SELECT ROUND(SUM(power) / 100.0) / 10 FROM samples s WHERE s.ride_id = rides.id), 0)
     WHERE ended_at IS NULL AND duration_s = 0
   `)
+  tx(() => crashed.forEach(r => storeBests(r.id as number)))
+  // Per-ride distance, HR-zone seconds (zone formula = hrZone) and bests without loading samples
+  const aggs = (): RideAgg[] => {
+    const maxHr = Number(db.prepare("SELECT value FROM settings WHERE key = 'maxHr'").get()?.value) || DEFAULT_MAX_HR
+    const map = new Map<number, RideAgg>()
+    for (const r of db.prepare('SELECT * FROM rides').all()) {
+      map.set(r.id as number, { ride: toRide(r), distanceKm: 0, zoneS: [0, 0, 0, 0, 0, 0], bests: [] })
+    }
+    const zones = db.prepare(`
+      SELECT ride_id, COALESCE((hr * 100 >= ?1 * 50) + (hr * 100 >= ?1 * 60) + (hr * 100 >= ?1 * 70)
+        + (hr * 100 >= ?1 * 80) + (hr * 100 >= ?1 * 90), 0) AS z, COUNT(*) AS n, COALESCE(SUM(speed), 0) AS speed
+      FROM samples GROUP BY ride_id, z
+    `).all(maxHr)
+    for (const r of zones) {
+      const a = map.get(r.ride_id as number)
+      if (!a) continue
+      a.zoneS[r.z as number] += r.n as number
+      a.distanceKm += (r.speed as number) / 3600
+    }
+    for (const r of db.prepare('SELECT * FROM ride_bests').all()) {
+      map.get(r.ride_id as number)?.bests.push({ durationS: r.duration_s as number, watts: r.watts as number })
+    }
+    return [...map.values()]
+  }
   const insertSample = db.prepare(
     'INSERT INTO samples (ride_id, t_s, power, target_power, cadence, hr, speed) VALUES (?, ?, ?, ?, ?, ?, ?)'
   )
@@ -108,15 +161,11 @@ export function openDb(path: string) {
     workouts: {
       list: () => db.prepare('SELECT * FROM workouts ORDER BY name COLLATE NOCASE').all().map(toWorkout),
       get: getWorkout,
-      save(w: { id?: number; name: string; blocks: Block[] }): Workout {
-        const json = JSON.stringify(w.blocks)
-        let id = w.id
-        if (id === undefined) {
-          const t = now()
-          id = Number(db.prepare('INSERT INTO workouts (name, blocks_json, created_at, updated_at) VALUES (?, ?, ?, ?)')
-            .run(w.name, json, t, t).lastInsertRowid)
-        } else {
-          db.prepare('UPDATE workouts SET name = ?, blocks_json = ?, updated_at = ? WHERE id = ?').run(w.name, json, now(), id)
+      save(w: WorkoutInput): Workout {
+        const id = w.id ?? insertWorkout(w)
+        if (w.id !== undefined) {
+          db.prepare('UPDATE workouts SET name = ?, power_unit = ?, category = ?, blocks_json = ?, updated_at = ? WHERE id = ?')
+            .run(w.name, w.unit, w.category, JSON.stringify(w.blocks), now(), id)
         }
         const saved = getWorkout(id)
         if (!saved) throw new Error(`Workout ${id} not found`)
@@ -128,8 +177,8 @@ export function openDb(path: string) {
     },
     rides: {
       start: (r: NewRide) => Number(db.prepare(
-        'INSERT INTO rides (started_at, mode, workout_id, workout_name, blocks_json) VALUES (?, ?, ?, ?, ?)'
-      ).run(now(), r.mode, r.workoutId, r.workoutName, r.blocks && JSON.stringify(r.blocks)).lastInsertRowid),
+        'INSERT INTO rides (started_at, mode, workout_id, workout_name, blocks_json, ftp) VALUES (?, ?, ?, ?, ?, ?)'
+      ).run(now(), r.mode, r.workoutId, r.workoutName, r.blocks && JSON.stringify(r.blocks), r.ftp).lastInsertRowid),
       appendSamples(rideId: number, samples: Sample[]) {
         tx(() => {
           for (const s of samples) insertSample.run(rideId, s.tS, s.power, s.targetPower, s.cadence, s.hr, s.speed)
@@ -139,6 +188,7 @@ export function openDb(path: string) {
         db.prepare(`UPDATE rides SET ended_at = ?, duration_s = ?, avg_power = ?, max_power = ?, avg_hr = ?, max_hr = ?,
           avg_cadence = ?, kj = ? WHERE id = ?`)
           .run(now(), s.durationS, s.avgPower, s.maxPower, s.avgHr, s.maxHr, s.avgCadence, s.kj, rideId)
+        tx(() => storeBests(rideId))
       },
       list: () => db.prepare('SELECT * FROM rides ORDER BY started_at DESC, id DESC').all().map(toRide),
       get(id: number) {
@@ -150,9 +200,14 @@ export function openDb(path: string) {
       delete(id: number) {
         tx(() => {
           db.prepare('DELETE FROM samples WHERE ride_id = ?').run(id)
+          db.prepare('DELETE FROM ride_bests WHERE ride_id = ?').run(id)
           db.prepare('DELETE FROM rides WHERE id = ?').run(id)
         })
       }
+    },
+    stats: {
+      overview: () => overview(aggs()),
+      prs: (rideId: number) => prs(aggs(), rideId)
     },
     settings: {
       get: (key: SettingKey) =>

@@ -3,7 +3,9 @@ import { DEFAULT_MAX_HR, type BluetoothCandidate } from '../../../shared/types'
 import { api } from '../api'
 import { devices, type DeviceKind } from '../devices'
 import { IconBluetooth, IconController, IconHeart, IconInfo, IconTrainer, IconX } from '../components/icons'
+import { setFtp, useFtp } from '../ftp'
 import type { Nav } from '../route'
+import { FtpSuggestion } from './ProgressScreen'
 import './devices.css'
 
 const SLOTS = {
@@ -30,6 +32,45 @@ const KINDS = Object.keys(SLOTS) as DeviceKind[]
 
 const ZONES = [50, 60, 70, 80, 90, 100]
 const validHr = (t: string) => /^\d+$/.test(t) && +t >= 100 && +t <= 230
+const validFtp = (t: string) => /^\d+$/.test(t) && +t >= 50 && +t <= 600
+
+function FtpCard() {
+  const ftp = useFtp()
+  const [text, setText] = useState(String(ftp))
+  const [estimate, setEstimate] = useState<number | null>()
+  useEffect(() => setText(String(ftp)), [ftp])
+  useEffect(() => {
+    api.stats.overview().then((o) => setEstimate(o.ftpEstimate))
+  }, [])
+  const commit = () => {
+    if (validFtp(text)) setFtp(+text)
+    else setText(String(ftp))
+  }
+  const invalid = !validFtp(text)
+  return (
+    <section className="card zones-card">
+      <div className="zones-left">
+        <h2>FTP</h2>
+        <p className="small muted">Workouts in % FTP use this value.</p>
+        <label className="field" htmlFor="ftp">Functional threshold power</label>
+        <div className="hr-input">
+          <input
+            id="ftp"
+            inputMode="numeric"
+            aria-invalid={invalid}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onBlur={commit}
+            onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+          />
+          <span className="muted">W</span>
+        </div>
+        {invalid && <div className="error-text">Enter 50–600 W</div>}
+      </div>
+      <div className="ftp-right"><FtpSuggestion estimate={estimate} /></div>
+    </section>
+  )
+}
 
 export function DevicesScreen(_: { nav: Nav }) {
   const [, rerender] = useState(0)
@@ -204,6 +245,8 @@ export function DevicesScreen(_: { nav: Nav }) {
           ))}
         </div>
       </section>
+
+      <FtpCard />
 
       {dialogOpen && slot && (
         <div className="backdrop">

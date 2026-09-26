@@ -167,13 +167,22 @@ violet accent, Archivo.
 Stored in the Electron `userData` directory.
 
 ```
-workouts  id, name, blocks_json, created_at, updated_at
-rides     id, started_at, ended_at, mode ('free'|'planned'), workout_id (nullable),
-          blocks_json (snapshot of the plan, nullable),
-          duration_s, avg_power, max_power, avg_hr, max_hr, avg_cadence, kj
-samples   ride_id, t_s, power, target_power, cadence, hr, speed
-settings  key, value
+workouts   id, name, power_unit ('watts'|'ftp'), category, blocks_json, created_at, updated_at
+rides      id, started_at, ended_at, mode, workout_id, workout_name, ftp,
+           blocks_json (resolved snapshot: absolute watts, intervals expanded),
+           duration_s, avg_power, max_power, avg_hr, max_hr, avg_cadence, kj
+samples    ride_id, t_s, power, target_power, cadence, hr, speed
+ride_bests ride_id, duration_s (5|60|300|1200), watts
+settings   key, value   (maxHr, ftp, device.*)
 ```
+
+Migrations via `PRAGMA user_version` (v1 example workout, v2 units/categories/bests +
+15-workout library in % FTP). Blocks: steady, ramp, intervals (repeat × on/off); power in
+the workout's unit. A ride resolves the plan to absolute watts with the FTP at start.
+`.zwo` import maps SteadyState/Warmup/Cooldown/Ramp/IntervalsT (FreeRide → 55 %,
+MaxEffort → 150 %). Progress screen: weekly volume, time in HR zones, best efforts,
+FTP estimate (95 % of the best 20 min, last 90 days), fitness per repeated workout
+(avg power / avg HR).
 
 Samples store raw values, the 3 s average is display-only.
 
@@ -193,6 +202,6 @@ Samples store raw values, the 3 s average is display-only.
 
 ## Out of scope for V1
 
-Wi-Fi / Wahoo Direct Connect (DIRCON), `.zwo` import, interval block, % FTP,
-analytics (power curve, trends, TSS), Strava / FIT export,
+Wi-Fi / Wahoo Direct Connect (DIRCON), TSS/CTL training load, Strava / FIT export,
+intervals.icu sync,
 code signing, auto-update, settings UI beyond max HR.

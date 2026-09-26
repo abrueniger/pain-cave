@@ -1,19 +1,33 @@
 // Pure block-list edits for the workout builder. Every function returns a new array.
-import { FREE_RIDE_START_WATTS, LIMITS, type Block } from '../../../shared/types'
+import { blockDurationS } from '../../../shared/blocks'
+import { FREE_RIDE_START_WATTS, LIMITS, type Block, type PowerUnit } from '../../../shared/types'
 import { workoutDurationS } from '../engine/plan'
 import { formatDuration, parseDuration } from '../format'
 
-export const clampWatts = (w: number): number => Math.min(LIMITS.maxWatts, Math.max(LIMITS.minWatts, w))
+/** Valid power range per unit (% = % of FTP). */
+export const POWER_RANGE: Record<PowerUnit, [number, number]> = { watts: [LIMITS.minWatts, LIMITS.maxWatts], ftp: [30, 300] }
+export const unitLabel = (unit: PowerUnit): string => (unit === 'ftp' ? '%' : 'W')
 
-/** Integer watts within LIMITS, else null. */
-export function parseWatts(text: string): number | null {
-  if (!/^\d+$/.test(text.trim())) return null
-  const w = Number(text)
-  return w >= LIMITS.minWatts && w <= LIMITS.maxWatts ? w : null
+export const clampPower = (v: number, unit: PowerUnit): number => Math.min(POWER_RANGE[unit][1], Math.max(POWER_RANGE[unit][0], v))
+
+/** Integer power within the unit's range ("88", "88 %" for % FTP), else null. */
+export function parsePower(text: string, unit: PowerUnit): number | null {
+  const t = unit === 'ftp' ? text.trim().replace(/\s*%$/, '') : text.trim()
+  if (!/^\d+$/.test(t)) return null
+  const v = Number(t)
+  return v === clampPower(v, unit) ? v : null
 }
 
-/** Watts text -> watts, or an error message. */
-export const checkWatts = (text: string): number | string => parseWatts(text) ?? `Watts must be ${LIMITS.minWatts}–${LIMITS.maxWatts}`
+/** Power text -> value, or an error message. */
+export function checkPower(text: string, unit: PowerUnit): number | string {
+  const [lo, hi] = POWER_RANGE[unit]
+  return parsePower(text, unit) ?? (unit === 'ftp' ? `% FTP must be ${lo}–${hi}` : `Watts must be ${lo}–${hi}`)
+}
+
+export function checkRepeat(text: string): number | string {
+  const n = Number(text.trim())
+  return /^\d+$/.test(text.trim()) && n >= 1 && n <= 99 ? n : 'Repeat must be 1–99'
+}
 
 /** "m:ss", "h:mm:ss" or plain seconds -> seconds, or an error message. */
 export function checkDuration(text: string): number | string {
@@ -25,28 +39,61 @@ export function checkDuration(text: string): number | string {
   return s > 0 ? s : 'Duration must be at least 0:01'
 }
 
-/** "25:30 · 5 blocks · 100–300 W" */
-export function workoutMeta(blocks: Block[]): string {
-  const watts = blocks.flatMap((b) => (b.type === 'steady' ? [b.watts] : [b.startWatts, b.endWatts]))
-  const lo = Math.min(...watts), hi = Math.max(...watts)
-  const range = !watts.length ? '' : lo === hi ? ` · ${lo} W` : ` · ${lo}–${hi} W`
+/** Every power value of a block. */
+const powers = (b: Block): number[] =>
+  b.type === 'steady' ? [b.watts] : b.type === 'ramp' ? [b.startWatts, b.endWatts] : [b.onWatts, b.offWatts]
+
+function mapPower(b: Block, f: (v: number) => number): Block {
+  if (b.type === 'steady') return { ...b, watts: f(b.watts) }
+  if (b.type === 'ramp') return { ...b, startWatts: f(b.startWatts), endWatts: f(b.endWatts) }
+  return { ...b, onWatts: f(b.onWatts), offWatts: f(b.offWatts) }
+}
+
+/** One power value from `from` to `to` unit, rounded and clamped. */
+export const convertPower = (v: number, from: PowerUnit, to: PowerUnit, ftp: number): number =>
+  from === to ? v : clampPower(Math.round(to === 'ftp' ? (v * 100) / ftp : (v * ftp) / 100), to)
+
+/** Switch a workout's unit keeping the profile (W <-> % of ftp). */
+export const convertBlocks = (blocks: Block[], from: PowerUnit, to: PowerUnit, ftp: number): Block[] =>
+  from === to ? blocks : blocks.map((b) => mapPower(b, (v) => convertPower(v, from, to, ftp)))
+
+/** "25:30 · 5 blocks · 100–300 W" / "45:00 · 7 blocks · 55–120 % FTP" */
+export function workoutMeta(blocks: Block[], unit: PowerUnit): string {
+  const ps = blocks.flatMap(powers)
+  const lo = Math.min(...ps), hi = Math.max(...ps)
+  const u = unit === 'ftp' ? ' % FTP' : ' W'
+  const range = !ps.length ? '' : lo === hi ? ` · ${lo}${u}` : ` · ${lo}–${hi}${u}`
   return `${formatDuration(workoutDurationS(blocks))} · ${blocks.length} block${blocks.length === 1 ? '' : 's'}${range}`
 }
 
-export const endWatts = (b: Block): number => (b.type === 'steady' ? b.watts : b.endWatts)
+export const endPower = (b: Block): number => (b.type === 'steady' ? b.watts : b.type === 'ramp' ? b.endWatts : b.offWatts)
 
-export const addSteady = (blocks: Block[]): Block[] => [...blocks, { type: 'steady', durationS: 300, watts: 150 }]
+const rampStep = (unit: PowerUnit) => (unit === 'ftp' ? 25 : 50)
 
-export function addRamp(blocks: Block[]): Block[] {
-  const start = blocks.length ? endWatts(blocks[blocks.length - 1]) : FREE_RIDE_START_WATTS
-  return [...blocks, { type: 'ramp', durationS: 300, startWatts: start, endWatts: clampWatts(start + 50) }]
+export const newSteady = (unit: PowerUnit, ftp: number): Extract<Block, { type: 'steady' }> => ({ type: 'steady', durationS: 300, watts: convertPower(150, 'watts', unit, ftp) })
+
+export const newIntervals = (unit: PowerUnit, ftp: number): Extract<Block, { type: 'intervals' }> => ({
+  type: 'intervals', repeat: 5, onS: 30, onWatts: convertPower(120, 'ftp', unit, ftp), offS: 30, offWatts: convertPower(50, 'ftp', unit, ftp)
+})
+
+export const addSteady = (blocks: Block[], unit: PowerUnit, ftp: number): Block[] => [...blocks, newSteady(unit, ftp)]
+
+export const addIntervals = (blocks: Block[], unit: PowerUnit, ftp: number): Block[] => [...blocks, newIntervals(unit, ftp)]
+
+export function addRamp(blocks: Block[], unit: PowerUnit, ftp: number): Block[] {
+  const start = blocks.length ? endPower(blocks[blocks.length - 1]) : convertPower(FREE_RIDE_START_WATTS, 'watts', unit, ftp)
+  return [...blocks, { type: 'ramp', durationS: 300, startWatts: start, endWatts: clampPower(start + rampStep(unit), unit) }]
 }
 
-export function setType(b: Block, type: Block['type']): Block {
+/** Change a block's type, keeping its duration and (first) power where the new type has one. */
+export function setType(b: Block, type: Block['type'], unit: PowerUnit, ftp: number): Block {
   if (b.type === type) return b
-  return b.type === 'steady'
-    ? { type: 'ramp', durationS: b.durationS, startWatts: b.watts, endWatts: clampWatts(b.watts + 50) }
-    : { type: 'steady', durationS: b.durationS, watts: b.startWatts }
+  if (type === 'intervals') return newIntervals(unit, ftp)
+  const durationS = blockDurationS(b)
+  const p = powers(b)[0]
+  return type === 'steady'
+    ? { type: 'steady', durationS, watts: p }
+    : { type: 'ramp', durationS, startWatts: p, endWatts: clampPower(p + rampStep(unit), unit) }
 }
 
 export const replaceAt = (blocks: Block[], i: number, b: Block): Block[] => blocks.map((x, j) => (j === i ? b : x))

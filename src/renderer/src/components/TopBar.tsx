@@ -6,6 +6,7 @@ const TABS: { label: string; route: Route; match: Route['name'][] }[] = [
   { label: 'Home', route: { name: 'home' }, match: ['home'] },
   { label: 'Workouts', route: { name: 'workouts' }, match: ['workouts', 'builder'] },
   { label: 'History', route: { name: 'history' }, match: ['history', 'rideDetail'] },
+  { label: 'Progress', route: { name: 'progress' }, match: ['progress'] },
   { label: 'Devices', route: { name: 'devices' }, match: ['devices'] }
 ]
 

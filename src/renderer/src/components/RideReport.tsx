@@ -1,7 +1,8 @@
 // Ride summary / ride detail page body: header, stats row, full-ride chart.
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import './ride.css'
 import type { RideSummary, Sample } from '../../../shared/types'
+import { api } from '../api'
 import { workoutDurationS } from '../engine'
 import { formatDuration } from '../format'
 import { RideChart } from './RideChart'
@@ -16,6 +17,9 @@ export const dayLabel = (d: Date) => `${DAYS[d.getDay()]} ${d.getDate()} ${MONTH
 export const timeLabel = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`
 /** "September 2026" */
 export const monthLabel = (d: Date) => `${MONTHS[d.getMonth()]} ${d.getFullYear()}`
+
+/** 5 -> "5 s", 300 -> "5 min" */
+export const bestLabel = (s: number) => (s < 60 ? `${s} s` : `${s / 60} min`)
 
 /** Crashed (never finished) or ended before the last block. */
 export const isIncomplete = (r: RideSummary) =>
@@ -63,6 +67,10 @@ export interface RideReportProps {
 
 export function RideReport({ ride, samples, eyebrow, actions }: RideReportProps) {
   const incomplete = isIncomplete(ride)
+  const [prs, setPrs] = useState<number[]>([])
+  useEffect(() => {
+    if (ride.endedAt) api.stats.prs(ride.id).then(setPrs)
+  }, [ride.id, ride.endedAt])
   const start = new Date(ride.startedAt)
   const end = ride.endedAt ? new Date(ride.endedAt) : new Date(start.getTime() + ride.durationS * 1000)
   const kind = !ride.blocks ? 'free ride' : incomplete ? `planned ${formatDuration(workoutDurationS(ride.blocks))}` : 'planned workout'
@@ -74,6 +82,7 @@ export function RideReport({ ride, samples, eyebrow, actions }: RideReportProps)
           <div className="report-title">
             <h1>{ride.mode === 'planned' ? (ride.workoutName ?? 'Planned workout') : 'Free ride'}</h1>
             <span className={`badge ${incomplete ? 'warn' : 'ok'}`}>{incomplete ? 'Incomplete' : 'Completed'}</span>
+            {prs.map((d) => <span key={d} className="badge accent">New best · {bestLabel(d)}</span>)}
           </div>
           <div className="report-meta">
             {dayLabel(start)} {start.getFullYear()} · {timeLabel(start)}–{timeLabel(end)} · {kind}

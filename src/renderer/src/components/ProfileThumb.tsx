@@ -1,8 +1,10 @@
 // Mini workout profile (plan only, no axes) as SVG. Used in lists and on Home.
-import type { Block } from '../../../shared/types'
-import { workoutDurationS } from '../engine/plan'
+import type { Block, PowerUnit } from '../../../shared/types'
+import { resolvePlan, workoutDurationS } from '../engine/plan'
+import { useFtp } from '../ftp'
 
-export function ProfileThumb({ blocks, width = 240, height = 52 }: { blocks: Block[]; width?: number; height?: number }) {
+export function ProfileThumb({ blocks: raw, unit = 'watts', width = 240, height = 52 }: { blocks: Block[]; unit?: PowerUnit; width?: number; height?: number }) {
+  const blocks = resolvePlan({ blocks: raw, unit }, useFtp())
   const total = workoutDurationS(blocks)
   const maxW = Math.max(1, ...blocks.map((b) => (b.type === 'steady' ? b.watts : Math.max(b.startWatts, b.endWatts))))
   const x = (t: number) => (total ? (t / total) * width : 0)

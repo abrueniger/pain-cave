@@ -2,7 +2,7 @@
 
 .bld-head { display: flex; align-items: center; gap: 16px; }
 .bld-back.icon { width: 44px; height: 44px; }
-.bld-name { width: 520px; min-width: 0; height: 52px; font-size: 24px; font-weight: 650; background: transparent; border-color: var(--border); }
+.bld-name { width: 460px; min-width: 0; height: 52px; font-size: 24px; font-weight: 650; background: transparent; border-color: var(--border); }
 .bld-stat { display: flex; flex-direction: column; gap: 2px; margin-left: 12px; }
 .bld-stat:first-of-type { margin-left: auto; }
 .bld-stat .num { font-size: 26px; line-height: 30px; }
@@ -17,7 +17,7 @@
 .bld-chart { padding: 10px 16px; }
 
 .bld-blocks { display: flex; flex-direction: column; gap: 8px; }
-.bld-grid { display: grid; grid-template-columns: 32px 28px 176px 124px 1fr 136px; column-gap: 16px; row-gap: 8px; align-items: center; }
+.bld-grid { display: grid; grid-template-columns: 32px 28px 240px 124px 1fr 96px; column-gap: 16px; row-gap: 8px; align-items: center; }
 .bld-cols { padding: 0 13px 0 9px; }
 .bld-cols span:nth-child(2) { text-align: center; }
 
@@ -44,6 +44,16 @@
 .bld-watts svg { width: 18px; height: 18px; color: var(--muted); }
 .bld-w { width: 88px; }
 .bld-unit { color: var(--muted); margin-left: -2px; }
+.bld-iv { grid-column: 4 / 6; display: flex; align-items: center; gap: 8px; }
+.bld-iv .bld-dur { width: 84px; }
+.bld-iv .bld-w { width: 72px; }
+.bld-rep { width: 52px; }
+.bld-sep { color: var(--muted); }
+.bld-lbl { margin-left: 8px; font-size: 13px; font-weight: 600; color: var(--text-2); }
+.bld-lbl.off { margin-left: 16px; }
+.bld-unitpick { position: relative; margin-left: 8px; }
+.bld-ftp { position: absolute; left: 2px; top: calc(100% + 6px); white-space: nowrap; font-size: 12px; line-height: 14px; color: var(--muted); }
+.bld-ftp .link { font-size: inherit; }
 .bld-actions { display: flex; justify-content: flex-end; gap: 4px; }
 .bld-actions svg { width: 18px; height: 18px; }
 

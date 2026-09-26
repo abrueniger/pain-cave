@@ -43,7 +43,7 @@
 }
 .rb-title { font-size: 20px; line-height: 28px; font-weight: 650; font-variant-numeric: tabular-nums; }
 .rb-div { width: 1px; height: 20px; background: var(--border-strong); }
-.rb-sub { font-size: 16px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.rb-sub { font-size: 16px; color: var(--text-2); font-variant-numeric: tabular-nums; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .rb-sub b { color: var(--text); font-weight: 600; }
 .ride-actions { display: flex; justify-content: flex-end; gap: 12px; }
 

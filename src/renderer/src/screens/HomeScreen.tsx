@@ -71,10 +71,10 @@ export function HomeScreen({ nav }: { nav: Nav }) {
         )}
         {workouts?.map((w) => (
           <div key={w.id} className="wrow">
-            <ProfileThumb blocks={w.blocks} width={132} height={34} />
+            <ProfileThumb blocks={w.blocks} unit={w.unit} width={132} height={34} />
             <div className="grow">
               <div className="wname">{w.name}</div>
-              <div className="small muted tnum">{workoutMeta(w.blocks)}</div>
+              <div className="small muted tnum">{workoutMeta(w.blocks, w.unit)}</div>
             </div>
             <button onClick={() => nav({ name: 'ride', mode: 'planned', workoutId: w.id })}>
               <IconPlay />Start

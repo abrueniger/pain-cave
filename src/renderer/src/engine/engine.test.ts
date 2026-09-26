@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Api, Block, Sample, Workout } from '../../../shared/types'
+import type { Api, Block, PowerUnit, Sample, Workout } from '../../../shared/types'
 import type { DeviceEvents, DeviceManager, TrainerData } from '../devices/types'
-import { blockAt, createRideController, hrZone, planTargetAt } from './index'
+import { blockAt, createRideController, hrZone, planTargetAt, type ResolvedBlock } from './index'
 
-const blocks: Block[] = [
+const blocks: ResolvedBlock[] = [
   { type: 'steady', durationS: 10, watts: 150 },
   { type: 'ramp', durationS: 10, startWatts: 100, endWatts: 200 }
 ]
@@ -35,7 +35,7 @@ describe('hrZone', () => {
   })
 })
 
-function setup(mode: 'free' | 'planned', b: Block[] = blocks) {
+function setup(mode: 'free' | 'planned', b: Block[] = blocks, unit: PowerUnit = 'watts') {
   const handlers: { [E in keyof DeviceEvents]?: DeviceEvents[E][] } = {}
   const devices = {
     on(e: keyof DeviceEvents, cb: never) {
@@ -53,8 +53,9 @@ function setup(mode: 'free' | 'planned', b: Block[] = blocks) {
     delete: vi.fn(async () => {})
   }
   const api = { rides } as unknown as Api
-  const workout: Workout | null = mode === 'planned' ? { id: 1, name: 'W', blocks: b, createdAt: '', updatedAt: '' } : null
-  const ctrl = createRideController({ devices, api, mode, workout, maxHr: 175 })
+  const workout: Workout | null =
+    mode === 'planned' ? { id: 1, name: 'W', unit, category: null, blocks: b, createdAt: '', updatedAt: '' } : null
+  const ctrl = createRideController({ devices, api, mode, workout, maxHr: 175, ftp: 250 })
   const emit = <E extends keyof DeviceEvents>(e: E, ...args: Parameters<DeviceEvents[E]>) =>
     handlers[e]?.forEach((cb) => (cb as (...a: unknown[]) => void)(...args))
   const pedal = (d: Partial<TrainerData> = {}) => emit('trainer', { power: 200, cadence: 90, speedKmh: 30, ...d })
@@ -76,7 +77,7 @@ describe('ride controller', () => {
   it('free ride: starts at 100 W and clamps shifts to 50..1000', async () => {
     const { ctrl, emit, lastSent, rides } = setup('free')
     await ctrl.start()
-    expect(rides.start).toHaveBeenCalledWith({ mode: 'free', workoutId: null, workoutName: null, blocks: null })
+    expect(rides.start).toHaveBeenCalledWith({ mode: 'free', workoutId: null, workoutName: null, blocks: null, ftp: 250 })
     expect(lastSent()).toBe(100)
     emit('shift', 'leftDown')
     expect(ctrl.view().target).toBe(50)
@@ -154,6 +155,29 @@ describe('ride controller', () => {
     expect(stored.map((s) => s.tS)).toEqual([...Array(20).keys()])
     expect(stored[15].targetPower).toBe(150)
     expect(rides.finish).toHaveBeenCalledWith(7, expect.objectContaining({ durationS: 20 }))
+  })
+
+  it('planned % FTP: resolves intervals and stores the resolved plan', async () => {
+    const plan: Block[] = [
+      { type: 'steady', durationS: 3, watts: 60 },
+      { type: 'intervals', repeat: 2, onS: 2, onWatts: 120, offS: 1, offWatts: 50 }
+    ]
+    const { ctrl, ride, rides, devices } = setup('planned', plan, 'ftp')
+    const resolved = [
+      { type: 'steady', durationS: 3, watts: 150 },
+      { type: 'steady', durationS: 2, watts: 300, label: 'Interval 1/2 · on' },
+      { type: 'steady', durationS: 1, watts: 125, label: 'Interval 1/2 · off' },
+      { type: 'steady', durationS: 2, watts: 300, label: 'Interval 2/2 · on' },
+      { type: 'steady', durationS: 1, watts: 125, label: 'Interval 2/2 · off' }
+    ]
+    expect(ctrl.view()).toMatchObject({ blocks: resolved, totalRemainingS: 9, target: 150 })
+    await ctrl.start()
+    expect(rides.start).toHaveBeenCalledWith({ mode: 'planned', workoutId: 1, workoutName: 'W', blocks: resolved, ftp: 250 })
+    await ride(4)
+    expect(ctrl.view().block).toMatchObject({ index: 1, count: 5, block: resolved[1], next: resolved[2] })
+    await ride(5)
+    expect(ctrl.view().state).toBe('finished')
+    expect(devices.setTargetPower.mock.calls.map((c) => c[0])).toEqual([150, 300, 125, 300, 125])
   })
 
   it('flushes samples every 5 s and computes stats', async () => {

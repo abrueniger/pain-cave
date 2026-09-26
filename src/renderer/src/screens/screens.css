@@ -41,3 +41,9 @@ button.primary:disabled:hover { background: var(--accent); }
 .blocks .duration input { width: 80px; }
 .blocks .watts { white-space: nowrap; }
 .blocks .watts input { width: 70px; }
+
+.blocks .handle { width: 28px; cursor: grab; color: var(--muted); font-size: 18px; text-align: center; }
+.blocks tr.dragging { opacity: 0.4; }
+.blocks tr.drop-before td { box-shadow: inset 0 2px 0 var(--accent); }
+.blocks tr.drop-after td { box-shadow: inset 0 -2px 0 var(--accent); }
+.hint { align-self: center; font-size: 13px; }

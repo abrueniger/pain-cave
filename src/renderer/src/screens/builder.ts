@@ -32,11 +32,18 @@ export const removeAt = (blocks: Block[], i: number): Block[] => blocks.filter((
 
 export const duplicateAt = (blocks: Block[], i: number): Block[] => [...blocks.slice(0, i + 1), { ...blocks[i] }, ...blocks.slice(i + 1)]
 
-/** Swap block i with its neighbour (dir -1 = up, 1 = down); no-op at the edges. */
-export function move(blocks: Block[], i: number, dir: -1 | 1): Block[] {
-  const j = i + dir
-  if (j < 0 || j >= blocks.length) return blocks
+/**
+ * Drag & drop: put block `from` at gap `to` (0 = before the first block, length = after the last).
+ * copy = insert a duplicate and keep the original.
+ */
+export function moveTo(blocks: Block[], from: number, to: number, copy = false): Block[] {
   const out = [...blocks]
-  ;[out[i], out[j]] = [out[j], out[i]]
+  if (copy) {
+    out.splice(to, 0, { ...blocks[from] })
+    return out
+  }
+  if (to === from || to === from + 1) return blocks
+  const [b] = out.splice(from, 1)
+  out.splice(to > from ? to - 1 : to, 0, b)
   return out
 }

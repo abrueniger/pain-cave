@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Block } from '../../../shared/types'
-import { addRamp, addSteady, duplicateAt, move, parseWatts, removeAt, setType } from './builder'
+import { addRamp, addSteady, duplicateAt, moveTo, parseWatts, removeAt, setType } from './builder'
 
 const s = (watts: number): Block => ({ type: 'steady', durationS: 60, watts })
 
@@ -14,9 +14,13 @@ describe('builder', () => {
 
   it('moves, duplicates and removes', () => {
     const bs = [s(1), s(2), s(3)]
-    expect(move(bs, 0, 1).map((b) => (b as { watts: number }).watts)).toEqual([2, 1, 3])
-    expect(move(bs, 0, -1)).toBe(bs)
-    expect(move(bs, 2, 1)).toBe(bs)
+    const w = (xs: Block[]) => xs.map((b) => (b as { watts: number }).watts)
+    expect(w(moveTo(bs, 0, 3))).toEqual([2, 3, 1])
+    expect(w(moveTo(bs, 2, 0))).toEqual([3, 1, 2])
+    expect(w(moveTo(bs, 0, 2))).toEqual([2, 1, 3])
+    expect(moveTo(bs, 1, 1)).toBe(bs)
+    expect(moveTo(bs, 1, 2)).toBe(bs)
+    expect(w(moveTo(bs, 0, 3, true))).toEqual([1, 2, 3, 1])
     expect(duplicateAt(bs, 1).map((b) => (b as { watts: number }).watts)).toEqual([1, 2, 2, 3])
     expect(removeAt(bs, 1).map((b) => (b as { watts: number }).watts)).toEqual([1, 3])
   })

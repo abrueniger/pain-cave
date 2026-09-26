@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type DragEvent } from 'react'
 import type { Block } from '../../../shared/types'
 import { api } from '../api'
 import { RideChart } from '../components/RideChart'
 import { workoutDurationS } from '../engine/plan'
 import { formatDuration, parseDuration } from '../format'
 import type { Nav } from '../route'
-import { addRamp, addSteady, duplicateAt, move, parseWatts, removeAt, replaceAt, setType } from './builder'
+import { addRamp, addSteady, duplicateAt, moveTo, parseWatts, removeAt, replaceAt, setType } from './builder'
 import './screens.css'
 
 const parsePositiveDuration = (t: string) => {
@@ -44,6 +44,7 @@ export function BuilderScreen({ nav, workoutId }: { nav: Nav; workoutId: number 
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [drag, setDrag] = useState<{ from: number; to: number | null } | null>(null)
 
   useEffect(() => {
     if (workoutId === null) return
@@ -59,6 +60,33 @@ export function BuilderScreen({ nav, workoutId }: { nav: Nav; workoutId: number 
     setDirty(true)
   }
   const patch = (i: number, b: Block) => edit(replaceAt(blocks, i, b))
+
+  // Native drag & drop: drag the handle, drop above/below a row; Alt (⌥) or Ctrl while dropping copies
+  const copyKey = (e: DragEvent) => e.altKey || e.ctrlKey
+  const dragOver = (e: DragEvent<HTMLTableRowElement>, i: number) => {
+    if (!drag) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = copyKey(e) ? 'copy' : 'move'
+    const r = e.currentTarget.getBoundingClientRect()
+    const to = e.clientY > r.top + r.height / 2 ? i + 1 : i
+    if (to !== drag.to) setDrag({ ...drag, to })
+  }
+  const drop = (e: DragEvent) => {
+    e.preventDefault()
+    if (drag?.to != null) {
+      const next = moveTo(blocks, drag.from, drag.to, copyKey(e))
+      if (next !== blocks) edit(next)
+    }
+    setDrag(null)
+  }
+  const rowClass = (i: number) =>
+    [
+      drag?.from === i && 'dragging',
+      drag?.to === i && 'drop-before',
+      drag?.to === i + 1 && i === blocks.length - 1 && 'drop-after'
+    ]
+      .filter(Boolean)
+      .join(' ')
 
   const save = async () => {
     setSaving(true)
@@ -113,11 +141,24 @@ export function BuilderScreen({ nav, workoutId }: { nav: Nav; workoutId: number 
 
       <table className="table blocks">
         <thead>
-          <tr><th>#</th><th>Type</th><th>Duration</th><th>Watts</th><th /></tr>
+          <tr><th /><th>#</th><th>Type</th><th>Duration</th><th>Watts</th><th /></tr>
         </thead>
         <tbody>
           {blocks.map((b, i) => (
-            <tr key={i}>
+            <tr key={i} className={rowClass(i)} onDragOver={(e) => dragOver(e, i)} onDrop={drop}>
+              <td
+                className="handle"
+                title="Drag to reorder, hold Alt to copy"
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.effectAllowed = 'copyMove'
+                  e.dataTransfer.setDragImage(e.currentTarget.parentElement!, 0, 0)
+                  setDrag({ from: i, to: null })
+                }}
+                onDragEnd={() => setDrag(null)}
+              >
+                ⠿
+              </td>
               <td className="muted">{i + 1}</td>
               <td>
                 <select value={b.type} onChange={(e) => patch(i, setType(b, e.target.value as Block['type']))}>
@@ -141,8 +182,6 @@ export function BuilderScreen({ nav, workoutId }: { nav: Nav; workoutId: number 
                 {' W'}
               </td>
               <td className="actions">
-                <button title="Move up" disabled={i === 0} onClick={() => edit(move(blocks, i, -1))}>↑</button>
-                <button title="Move down" disabled={i === blocks.length - 1} onClick={() => edit(move(blocks, i, 1))}>↓</button>
                 <button title="Duplicate" onClick={() => edit(duplicateAt(blocks, i))}>Duplicate</button>
                 <button title="Delete" className="danger" onClick={() => edit(removeAt(blocks, i))}>Delete</button>
               </td>
@@ -154,6 +193,7 @@ export function BuilderScreen({ nav, workoutId }: { nav: Nav; workoutId: number 
       <div className="row">
         <button onClick={() => edit(addSteady(blocks))}>+ Steady</button>
         <button onClick={() => edit(addRamp(blocks))}>+ Ramp</button>
+        {blocks.length > 1 && <span className="muted hint">Drag ⠿ to reorder · hold Alt (⌥) while dropping to copy</span>}
       </div>
     </main>
   )

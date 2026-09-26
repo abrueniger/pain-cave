@@ -1,7 +1,9 @@
-// STUB – implemented by the devices agent.
-// Exports the app-wide DeviceManager: simulated when window.api.fakeDevices, Bluetooth otherwise.
+// The app-wide DeviceManager: simulated when window.api.fakeDevices, Bluetooth otherwise.
+import { api } from '../api'
+import { createBluetoothManager } from './bluetooth'
+import { createFakeManager } from './fake'
 import type { DeviceManager } from './types'
 
-export const devices: DeviceManager = null as unknown as DeviceManager
+export const devices: DeviceManager = api.fakeDevices ? createFakeManager() : createBluetoothManager()
 
 export type * from './types'

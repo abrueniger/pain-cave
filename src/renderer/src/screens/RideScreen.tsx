@@ -1,55 +1,95 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import '../components/ride.css'
 import { api } from '../api'
-import { devices } from '../devices'
-import { createRideController, type RideController, type RideView } from '../engine'
-import { DEFAULT_MAX_HR, type Block, type RideSummary, type Sample } from '../../../shared/types'
+import { devices, type DeviceKind } from '../devices'
+import { createRideController, hrZone, workoutDurationS, type RideController, type RideView } from '../engine'
+import { DEFAULT_MAX_HR, LIMITS, type Block, type RideSummary, type Sample } from '../../../shared/types'
 import type { Nav } from '../route'
 import { formatDuration } from '../format'
 import { DeviceDots } from '../components/DeviceDots'
 import { RideChart } from '../components/RideChart'
-import { RideReport } from '../components/RideReport'
+import { ConfirmButton, IconCheck, RideReport } from '../components/RideReport'
+import { TopBar } from '../components/TopBar'
+import { IconAlert, IconPause, IconPlay, IconStop } from '../components/icons'
 
+const NONE = '—'
 const watts = (b: Block) => (b.type === 'steady' ? `${b.watts} W` : `${b.startWatts}→${b.endWatts} W`)
-const dur = (s: number) => (s < 60 ? `${s} s` : formatDuration(s))
-const num = (v: number | null) => (v == null ? '–' : String(Math.round(v)))
+const num = (v: number | null | undefined) => (v == null ? NONE : String(Math.round(v)))
+const signed = (w: number) => `${w < 0 ? '−' : '+'} ${Math.abs(w)}`
+const SHIFT_HINT = 'Shift right ±10 W · left ±50 W'
 
-function blockInfo(v: RideView): string {
-  if (!v.block) return v.mode === 'free' ? 'Free ride' : (v.workoutName ?? '')
-  const { index, count, block, next } = v.block
-  const parts = [`Block ${index + 1}/${count}`, `${block.type === 'steady' ? 'Steady' : 'Ramp'} ${watts(block)}`]
-  if (next) parts.push(`next: ${dur(next.durationS)} @ ${watts(next)}`)
-  return parts.join(' · ')
+function Value({ v, unit }: { v: string; unit?: string }) {
+  return (
+    <div className="tile-value">
+      <span>
+        <span className={`num v${v === NONE ? ' none' : ''}`}>{v}</span>
+        {unit && <span className="unit">{unit}</span>}
+      </span>
+    </div>
+  )
+}
+
+function Tile({ label, right, className = '', children }: { label: string; right?: ReactNode; className?: string; children: ReactNode }) {
+  return (
+    <div className={`tile rtile ${className}`}>
+      <div className="tile-top"><span className="tile-label">{label}</span>{right}</div>
+      {children}
+    </div>
+  )
+}
+
+function Centre({ view }: { view: RideView }) {
+  const planned = view.mode === 'planned'
+  if (view.state === 'ready') {
+    const n = view.blocks?.length ?? 0
+    return (
+      <>
+        <strong className="rb-title">{view.workoutName ?? 'Free ride'}</strong>
+        <span className="rb-sub">
+          {planned ? `${formatDuration(workoutDurationS(view.blocks ?? []))} · ${n} block${n === 1 ? '' : 's'}` : SHIFT_HINT}
+        </span>
+      </>
+    )
+  }
+  if (!planned || !view.block) return <><span className="rb-chip">Free ride</span><span className="rb-sub">{SHIFT_HINT}</span></>
+  const { index, count, block, next } = view.block
+  return (
+    <>
+      <span className="rb-chip">Block {index + 1}/{count}</span>
+      <strong className="rb-title">{block.type === 'steady' ? 'Steady' : 'Ramp'} {watts(block)}</strong>
+      {next && (
+        <>
+          <span className="rb-div" />
+          <span className="rb-sub">next <b>{formatDuration(next.durationS)} @ {watts(next)}</b></span>
+        </>
+      )}
+    </>
+  )
 }
 
 export function RideScreen({ nav, mode, workoutId }: { nav: Nav; mode: 'free' | 'planned'; workoutId: number | null }) {
   const [ctrl, setCtrl] = useState<RideController | null>(null)
   const [view, setView] = useState<RideView | null>(null)
+  const [maxHr, setMaxHr] = useState(DEFAULT_MAX_HR)
   const [report, setReport] = useState<{ ride: RideSummary; samples: Sample[] } | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [confirmEnd, setConfirmEnd] = useState(false)
   const [, bump] = useState(0)
   const back = () => nav(mode === 'planned' ? { name: 'workouts' } : { name: 'home' })
 
   useEffect(() => devices.on('status', () => bump((n) => n + 1)), [])
-
-  // Chart takes the height left below the tiles
-  const [winH, setWinH] = useState(window.innerHeight)
-  useEffect(() => {
-    const onResize = () => setWinH(window.innerHeight)
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
-  }, [])
 
   useEffect(() => {
     let c: RideController | null = null
     let unsub: (() => void) | null = null
     let cancelled = false
     async function load() {
-      const maxHr = Number(await api.settings.get('maxHr')) || DEFAULT_MAX_HR
+      const hrMax = Number(await api.settings.get('maxHr')) || DEFAULT_MAX_HR
       const workout = mode === 'planned' && workoutId != null ? await api.workouts.get(workoutId) : null
       if (mode === 'planned' && !workout) throw new Error('Workout not found')
       if (cancelled) return
-      c = createRideController({ devices, api, mode, workout, maxHr })
+      c = createRideController({ devices, api, mode, workout, maxHr: hrMax })
+      setMaxHr(hrMax)
       setCtrl(c)
       setView(c.view())
       unsub = c.subscribe(setView)
@@ -88,119 +128,216 @@ export function RideScreen({ nav, mode, workoutId }: { nav: Nav; mode: 'free' | 
     return () => window.removeEventListener('keydown', onKey)
   }, [ctrl])
 
+  // last known values, shown dimmed while a device reconnects mid-ride
+  const last = useRef<{ power: number | null; cadence: number | null; hr: number | null }>({ power: null, cadence: null, hr: null })
+
   if (error) {
     return (
-      <main className="screen">
-        <header className="topbar"><button onClick={back}>Back</button></header>
-        <div className="card">{error}</div>
+      <main className="page">
+        <p className="error-text">{error}</p>
+        <div><button onClick={back}>Back</button></div>
       </main>
     )
   }
-  if (!ctrl || !view) return <main className="screen"><div className="muted">Loading…</div></main>
+  if (!ctrl || !view) return <main className="page" />
 
   if (finished) {
-    if (!report) return <main className="screen"><div className="muted">Saving…</div></main>
     const discard = async () => {
       await ctrl.discard()
       nav({ name: 'home' })
     }
     return (
-      <main className="screen">
-        <header className="topbar"><h1>Ride summary</h1><DeviceDots /></header>
-        <RideReport
-          ride={report.ride}
-          samples={report.samples}
-          actions={<>
-            <button className="primary" onClick={() => nav({ name: 'home' })}>Save</button>
-            <button className="danger" onClick={discard}>Discard</button>
-          </>}
-        />
-      </main>
+      <>
+        <TopBar route={{ name: 'ride', mode: 'free' }} nav={nav} tabs={false} />
+        {report
+          ? (
+              <RideReport
+                ride={report.ride}
+                samples={report.samples}
+                eyebrow={<span className="label report-eyebrow">Ride summary</span>}
+                actions={<>
+                  <ConfirmButton label="Discard" question="Discard this ride?" confirmLabel="Discard" onConfirm={discard} />
+                  <button className="primary lg save-ride" onClick={() => nav({ name: 'home' })}><IconCheck />Save ride</button>
+                </>}
+              />
+            )
+          : <main className="page" />}
+      </>
     )
   }
 
   const { state, stats } = view
-  const active = state === 'running' || state === 'paused' || state === 'autoPaused'
-  const trainerOk = devices.status('trainer').status === 'connected'
+  const active = state !== 'ready'
+  const pausedState = state === 'paused' || state === 'autoPaused'
   const planned = view.mode === 'planned'
+  const trainerOk = devices.status('trainer').status === 'connected'
+  const start = () => ctrl.start().catch((e) => setError(String(e)))
   const end = () => ctrl.end().catch((e) => setError(String(e)))
-  const leave = async () => {
-    if (active) {
-      if (!confirm('End ride?')) return
-      await ctrl.end()
-    }
-    back()
-  }
+
+  // connection lost mid-ride: keep the last value, dimmed, with a note
+  const lost = (k: DeviceKind) => active && devices.status(k).status === 'searching'
+  const note = <span className="reconnecting">Reconnecting…</span>
+  if (view.power3s != null) last.current.power = view.power3s
+  if (view.cadence != null) last.current.cadence = view.cadence
+  if (view.hr != null) last.current.hr = view.hr
+  const trainerLost = lost('trainer')
+  const hrLost = lost('hr')
+  const power = trainerLost ? last.current.power : view.power3s
+  const cadence = trainerLost ? last.current.cadence : view.cadence
+  const hr = hrLost ? last.current.hr : view.hr
+  const zone = hr == null ? 0 : Math.max(1, hrZone(hr, maxHr)) // below 50 % renders as Z1
+  const dim = pausedState ? ' dim' : ''
+
+  const progress = view.block ? (1 - view.block.remainingS / view.block.block.durationS) * 100 : 0
+  const pausedBadge = pausedState ? <span className="badge">Paused</span> : null
 
   return (
-    <main className="screen ride">
-      <header className="topbar ride-status">
-        <button onClick={leave}>Back</button>
-        <DeviceDots />
-        <span className="ride-block">{blockInfo(view)}</span>
-        {active && (
-          <span className="ride-buttons">
-            {state === 'paused'
-              ? <button onClick={() => ctrl.resume()}>Resume</button>
-              : <button onClick={() => ctrl.pause()}>Pause</button>}
-            <button className="danger" onClick={end}>End</button>
-          </span>
-        )}
-      </header>
-
-      {state === 'ready' && (
-        <div className="ride-banner">
-          <button className="primary ride-start" disabled={!trainerOk} onClick={() => ctrl.start().catch((e) => setError(String(e)))}>
-            Start
-          </button>
-          {!trainerOk && <span className="muted">Connect the trainer first (Devices)</span>}
-        </div>
-      )}
-      {state === 'autoPaused' && <div className="ride-banner">Paused – start pedaling to resume</div>}
-      {state === 'paused' && (
-        <div className="ride-banner">
-          Paused <button className="primary" onClick={() => ctrl.resume()}>Resume</button>
-        </div>
-      )}
-
-      <div className="ride-tiles large">
-        <div className="tile">
-          <span className="tile-label">Power (3 s)</span>
-          <span className="tile-value">{num(view.power3s)}<small> W</small></span>
-        </div>
-        <div className="tile target">
-          <span className="tile-label">Target</span>
-          <span className="tile-value">{num(view.target)}<small> W</small></span>
-          {planned && view.offset !== 0 && view.planTarget != null && (
-            <span className="tile-sub">plan {Math.round(view.planTarget)} {view.offset > 0 ? '+' : '−'} {Math.abs(view.offset)}</span>
+    <main className="ride">
+      <header className="ride-bar">
+        <DeviceDots className="ride-dots" />
+        <div className="ride-centre"><Centre view={view} /></div>
+        <div className="ride-actions">
+          {state === 'ready' && (
+            <>
+              <button className="ghost lg" onClick={back}>Back</button>
+              <button className="primary lg" disabled={!trainerOk} onClick={start}><IconPlay />Start</button>
+            </>
+          )}
+          {active && confirmEnd && (
+            <>
+              <button className="ghost lg" onClick={() => setConfirmEnd(false)}>Cancel</button>
+              <button className="danger-solid lg" onClick={end}><IconStop />End ride</button>
+            </>
+          )}
+          {active && !confirmEnd && (
+            <>
+              {pausedState
+                ? <button className="primary lg" onClick={() => ctrl.resume()}><IconPlay />Resume</button>
+                : <button className="lg" onClick={() => ctrl.pause()}><IconPause />Pause</button>}
+              <button className="danger lg" onClick={() => setConfirmEnd(true)}><IconStop />End</button>
+            </>
           )}
         </div>
+      </header>
+
+      <div className="ride-body">
+        {pausedState && (
+          <div className="paused-banner">
+            <span className="pb-icon"><IconPause /></span>
+            <div className="pb-text">
+              <strong>{state === 'autoPaused' ? 'Paused – start pedaling to resume' : 'Paused'}</strong>
+              <span>
+                {state === 'autoPaused' ? 'Auto-paused after 3 s without cadence' : 'Press Resume or Space to continue'}
+                {' · clock stopped · trainer at minimum'}
+              </span>
+            </div>
+            {state === 'autoPaused' && <button className="primary lg" onClick={() => ctrl.resume()}><IconPlay />Resume</button>}
+          </div>
+        )}
+
+        <div className="ride-row big">
+          <Tile label="Power · 3 s" right={trainerLost && note} className={dim || (trainerLost ? ' dim' : '')}>
+            <Value v={state === 'ready' ? NONE : num(power)} unit="W" />
+          </Tile>
+          <Tile label="Target" right={<span className="erg">ERG</span>} className={`target${dim}`}>
+            <Value v={num(view.target)} unit="W" />
+            <div className="tile-bottom">
+              {planned
+                ? (
+                    <span className="plan-line">
+                      plan {num(view.planTarget)}
+                      <span className={`offset-chip${view.offset ? '' : ' zero'}`}>{signed(view.offset)}</span>
+                    </span>
+                  )
+                : <span className="small muted">ERG · {LIMITS.minWatts}–{LIMITS.maxWatts} W</span>}
+              <span className="small muted">Shift to adjust</span>
+            </div>
+          </Tile>
+        </div>
+
+        <div className="ride-row mid">
+          <Tile
+            label="Heart rate"
+            right={hrLost ? note : zone > 0 && <span className="zone-chip">Z{zone} · {Math.round((hr! * 100) / maxHr)} %</span>}
+            className={`hr-tile${zone ? ` zone z${zone}` : ''}${hrLost ? ' dim' : ''}`}
+          >
+            <Value v={num(hr)} unit="bpm" />
+            {zone > 0 && (
+              <div className="zone-scale">
+                {[1, 2, 3, 4, 5].map((i) => <i key={i} className={i === zone ? 'on' : i < zone ? 'below' : ''} />)}
+              </div>
+            )}
+          </Tile>
+          <Tile label="Cadence" right={trainerLost && note} className={dim || (trainerLost ? ' dim' : '')}>
+            <Value v={num(cadence)} unit="rpm" />
+          </Tile>
+          {planned
+            ? (
+                <Tile label="Block left" right={pausedBadge}>
+                  <div className="bl-row">
+                    <Value v={view.block ? formatDuration(view.block.remainingS) : NONE} />
+                    <span className="total-left">
+                      <span className="label">Total left</span>
+                      <span className="num">{formatDuration(view.totalRemainingS ?? 0)}</span>
+                    </span>
+                  </div>
+                  <div className="progress"><i style={{ width: `${progress}%` }} /></div>
+                </Tile>
+              )
+            : (
+                <Tile label="Elapsed" right={pausedBadge}>
+                  <Value v={formatDuration(view.elapsedS)} />
+                </Tile>
+              )}
+        </div>
+
+        <section className="card chart-card">
+          <RideChart
+            blocks={view.blocks}
+            samples={view.samples}
+            positionS={view.elapsedS}
+            offset={view.offset}
+            paused={pausedState}
+            height="fill"
+          />
+          {state === 'ready' && (
+            <div className="start-overlay">
+              <div className="start-card">
+                {trainerOk
+                  ? (
+                      <>
+                        <h3>Ready when you are</h3>
+                        <p>Recording starts when you press Start. The trainer will hold {view.target} W.</p>
+                      </>
+                    )
+                  : (
+                      <>
+                        <span className="warn-well"><IconAlert /></span>
+                        <h3>Trainer not connected</h3>
+                        <p>Pedal once to wake the KICKR — it reconnects by itself. Start unlocks as soon as it’s back.</p>
+                      </>
+                    )}
+                <button className="primary xl start-btn" disabled={!trainerOk} onClick={start}><IconPlay />Start</button>
+                {!trainerOk && <button className="link" onClick={() => nav({ name: 'devices' })}>Open Devices</button>}
+              </div>
+            </div>
+          )}
+        </section>
+
+        <footer className="ride-foot">
+          {([
+            ['Avg power', view.samples.length ? num(stats.avgPower) : NONE, 'W'],
+            ['Avg HR', num(stats.avgHr), 'bpm'],
+            ['Energy', num(stats.kj), 'kJ'],
+            ['Elapsed', formatDuration(view.elapsedS), '']
+          ] as const).map(([label, v, unit]) => (
+            <span key={label} className="foot-item">
+              <span className="label">{label}</span>
+              <span><span className="num">{v}</span>{unit && v !== NONE && <span className="unit">{unit}</span>}</span>
+            </span>
+          ))}
+        </footer>
       </div>
-
-      <div className="ride-tiles medium">
-        <div className={`tile z${view.hrZone}`}>
-          <span className="tile-label">Heart rate{view.hrZone ? ` · Z${view.hrZone}` : ''}</span>
-          <span className="tile-value">{num(view.hr)}<small> bpm</small></span>
-        </div>
-        <div className="tile">
-          <span className="tile-label">Cadence</span>
-          <span className="tile-value">{num(view.cadence)}<small> rpm</small></span>
-        </div>
-        <div className="tile">
-          <span className="tile-label">{planned ? 'Block left' : 'Time'}</span>
-          <span className="tile-value">{planned ? (view.block ? formatDuration(view.block.remainingS) : '–') : formatDuration(view.elapsedS)}</span>
-          {planned && view.totalRemainingS != null && <span className="tile-sub">total left {formatDuration(view.totalRemainingS)}</span>}
-        </div>
-      </div>
-
-      <RideChart blocks={view.blocks} samples={view.samples} positionS={view.elapsedS} offset={view.offset} height={Math.max(260, winH - 480)} />
-
-      <footer className="ride-footer">
-        <span>Avg power <b>{num(stats.avgPower)} W</b></span>
-        <span>Avg HR <b>{num(stats.avgHr)} bpm</b></span>
-        <span><b>{num(stats.kj)}</b> kJ</span>
-        <span>Elapsed <b>{formatDuration(view.elapsedS)}</b></span>
-      </footer>
     </main>
   )
 }

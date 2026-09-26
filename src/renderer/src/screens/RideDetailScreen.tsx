@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import type { RideSummary, Sample } from '../../../shared/types'
 import { api } from '../api'
-import { RideReport } from '../components/RideReport'
+import { ConfirmButton, RideReport } from '../components/RideReport'
+import { IconChevronLeft } from '../components/icons'
 import type { Nav } from '../route'
-import './screens.css'
 
 export function RideDetailScreen({ nav, rideId }: { nav: Nav; rideId: number }) {
   const [data, setData] = useState<{ ride: RideSummary; samples: Sample[] } | null | undefined>(undefined)
@@ -12,36 +12,28 @@ export function RideDetailScreen({ nav, rideId }: { nav: Nav; rideId: number }) 
   }, [rideId])
 
   const back = () => nav({ name: 'history' })
-
-  const remove = async () => {
-    if (!confirm('Delete this ride?')) return
-    await api.rides.delete(rideId)
-    back()
-  }
+  const backLink = <button className="link back-link" onClick={back}><IconChevronLeft />History</button>
 
   if (!data) {
     return (
-      <main className="screen">
-        <header className="topbar">
-          <button onClick={back}>Back</button>
-        </header>
-        {data === null && <div className="card empty">Ride not found.</div>}
+      <main className="page">
+        {backLink}
+        {data === null && <p className="muted">Ride not found.</p>}
       </main>
     )
   }
 
+  const remove = async () => {
+    await api.rides.delete(rideId)
+    back()
+  }
+
   return (
-    <main className="screen">
-      <RideReport
-        ride={data.ride}
-        samples={data.samples}
-        actions={
-          <>
-            <button onClick={back}>Back</button>
-            <button className="danger" onClick={remove}>Delete</button>
-          </>
-        }
-      />
-    </main>
+    <RideReport
+      ride={data.ride}
+      samples={data.samples}
+      eyebrow={backLink}
+      actions={<ConfirmButton label="Delete ride" question="Delete this ride?" confirmLabel="Delete" onConfirm={remove} />}
+    />
   )
 }

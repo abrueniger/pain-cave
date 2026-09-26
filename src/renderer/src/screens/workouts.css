@@ -1,0 +1,24 @@
+.wo-head { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.wo-sub { margin-top: 4px; color: var(--text-2); }
+
+.card.wo-list { list-style: none; margin: 0; padding: 0; overflow: hidden; }
+.wo-list li { height: 104px; padding: 0 24px; display: flex; align-items: center; gap: 24px; border-top: 1px solid var(--border); }
+.wo-list li:first-child { border-top: 0; }
+.wo-list li:hover { background: var(--surface-2); }
+.wo-list li.confirm { background: rgba(240, 86, 74, 0.06); }
+.wo-info { flex: 1; min-width: 0; }
+.wo-name { font-size: 18px; line-height: 24px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wo-meta { margin-top: 2px; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.wo-actions { display: flex; align-items: center; gap: 8px; }
+.wo-actions button.wo-trash { color: var(--danger); }
+.wo-actions button.wo-trash:hover { color: var(--danger); background: rgba(240, 86, 74, 0.12); }
+.wo-ask { margin-right: 8px; font-size: 14px; color: var(--text-2); }
+
+.wo-empty {
+  height: 460px; border: 1.5px dashed var(--border-strong); border-radius: var(--r-tile);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+}
+.wo-empty > svg { margin-bottom: 28px; }
+.wo-empty h2 { font-size: 22px; }
+.wo-empty p { max-width: 400px; margin: 8px 0 24px; color: var(--text-2); }
+.wo-empty .link { margin-top: 16px; font-size: 14px; }

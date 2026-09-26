@@ -13,8 +13,10 @@ app.whenReady().then(() => {
   app.on('will-quit', () => db.close())
 
   const win = new BrowserWindow({
-    width: 1280,
-    height: 800,
+    width: 1440,
+    height: 900,
+    minWidth: 1280,
+    minHeight: 800,
     backgroundColor: '#141413',
     webPreferences: { preload: join(__dirname, '../preload/index.js'), sandbox: false }
   })

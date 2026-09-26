@@ -1,0 +1,43 @@
+/* History table. Spec: docs/design.md "History", "Lists / tables". */
+.history-count { margin: 4px 0 0; color: var(--text-2); }
+
+.card.history-table { padding: 0; overflow: hidden; }
+.h-row {
+  display: grid; grid-template-columns: 210px 1fr 130px 130px 130px 130px 40px; gap: 16px; align-items: center;
+  width: 100%; padding: 0 20px 0 24px;
+}
+.h-head { height: 44px; }
+.h-head .r { text-align: right; }
+.h-month {
+  height: 36px; display: flex; align-items: center; padding: 0 24px;
+  background: var(--input); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+}
+button.h-row {
+  height: 56px; border: 0; border-radius: 0; background: transparent; text-align: left; justify-content: stretch;
+  font: 400 15px/22px var(--font); color: var(--text); cursor: pointer;
+}
+button.h-row + button.h-row { border-top: 1px solid var(--border); }
+button.h-row:hover { background: var(--surface-2); }
+button.h-row:focus-visible { box-shadow: inset var(--focus-ring); }
+
+.h-date { display: flex; align-items: baseline; gap: 10px; white-space: nowrap; }
+.h-date b { font-weight: 600; }
+.h-date span { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.h-work { display: flex; align-items: center; gap: 10px; min-width: 0; white-space: nowrap; }
+.h-work b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.h-work.free { gap: 8px; font-weight: 500; color: var(--text-2); }
+.h-work svg { width: 16px; height: 16px; color: var(--muted); }
+.h-num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.h-num b { font-size: 16px; font-weight: 600; }
+.h-num .u { margin-left: 4px; font-size: 13px; font-weight: 500; color: var(--muted); }
+.h-chev { display: flex; justify-content: flex-end; color: var(--faint); }
+.h-chev svg { width: 18px; height: 18px; }
+button.h-row:hover .h-chev { color: var(--text); }
+
+.history-empty {
+  height: 460px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center;
+  border: 1.5px dashed var(--border-strong); border-radius: var(--r-tile);
+}
+.history-empty svg { margin-bottom: 12px; }
+.history-empty h2 { font-size: 22px; }
+.history-empty p { margin: 0 0 12px; color: var(--text-2); }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Block } from '../../../shared/types'
-import { addRamp, addSteady, duplicateAt, moveTo, parseWatts, removeAt, setType } from './builder'
+import { addRamp, addSteady, checkDuration, checkWatts, dragShift, dropIndex, duplicateAt, gapTop, moveTo, parseWatts, removeAt, setType, workoutMeta } from './builder'
 
 const s = (watts: number): Block => ({ type: 'steady', durationS: 60, watts })
 
@@ -36,5 +36,42 @@ describe('builder', () => {
     expect(parseWatts('1001')).toBeNull()
     expect(parseWatts('15.5')).toBeNull()
     expect(parseWatts('')).toBeNull()
+  })
+
+  it('checks durations and watts', () => {
+    expect(checkDuration('5:00')).toBe(300)
+    expect(checkDuration('90')).toBe(90)
+    expect(checkDuration('1:02:05')).toBe(3725)
+    expect(checkDuration('12:75')).toBe('Seconds must be 0–59 — e.g. 12:45')
+    expect(checkDuration('1:75:00')).toBe('Minutes must be 0–59')
+    expect(checkDuration('0:00')).toBeTypeOf('string')
+    expect(checkDuration('5:')).toBeTypeOf('string')
+    expect(checkWatts('170')).toBe(170)
+    expect(checkWatts('20')).toBe('Watts must be 50–1000')
+  })
+
+  it('describes a workout', () => {
+    expect(workoutMeta([s(100), { type: 'ramp', durationS: 90, startWatts: 150, endWatts: 300 }])).toBe('2:30 · 2 blocks · 100–300 W')
+    expect(workoutMeta([s(120)])).toBe('1:00 · 1 block · 120 W')
+  })
+
+  it('lays out a drag', () => {
+    // rows 60 high, 10 apart -> pitch 70; centres at 30, 100, 170
+    const slots = [0, 70, 140].map((top) => ({ top, height: 60 }))
+    expect(dropIndex(slots, 100)).toBe(1) // not moved
+    expect(dropIndex(slots, 20)).toBe(0)
+    expect(dropIndex(slots, 200)).toBe(3)
+    // move row 2 to the top: rows 0 and 1 open down, gap at the old row 0
+    expect([0, 1].map((i) => dragShift(i, 2, 0, false))).toEqual([1, 1])
+    expect(gapTop(slots, 2, 0, false, 70)).toBe(0)
+    // move row 0 to the end: rows 1 and 2 collapse up, gap below them
+    expect([1, 2].map((i) => dragShift(i, 0, 3, false))).toEqual([-1, -1])
+    expect(gapTop(slots, 0, 3, false, 70)).toBe(140)
+    // dropping in place: nothing moves, the gap is the source slot
+    expect([0, 2].map((i) => dragShift(i, 1, 2, false))).toEqual([0, 0])
+    expect(gapTop(slots, 1, 2, false, 70)).toBe(70)
+    // copy row 0 behind row 1: the source stays, row 2 opens down
+    expect([1, 2].map((i) => dragShift(i, 0, 2, true))).toEqual([0, 1])
+    expect(gapTop(slots, 0, 2, true, 70)).toBe(140)
   })
 })

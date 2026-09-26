@@ -1,0 +1,69 @@
+.page.bld { padding: 28px 48px; }
+
+.bld-head { display: flex; align-items: center; gap: 16px; }
+.bld-back.icon { width: 44px; height: 44px; }
+.bld-name { width: 520px; min-width: 0; height: 52px; font-size: 24px; font-weight: 650; background: transparent; border-color: var(--border); }
+.bld-stat { display: flex; flex-direction: column; gap: 2px; margin-left: 12px; }
+.bld-stat:first-of-type { margin-left: auto; }
+.bld-stat .num { font-size: 26px; line-height: 30px; }
+.bld-stat .bld-none { color: var(--muted); }
+.bld-save { margin-left: 12px; height: 68px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.bld-save button { min-width: 120px; }
+.bld-status { font-size: 12px; line-height: 14px; font-weight: 600; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+.bld-status.warn { color: var(--warn); }
+.bld-status.warn::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--warn); }
+.bld-status.bad { color: var(--danger); }
+
+.bld-chart { padding: 10px 16px; }
+
+.bld-blocks { display: flex; flex-direction: column; gap: 8px; }
+.bld-grid { display: grid; grid-template-columns: 32px 28px 176px 124px 1fr 136px; column-gap: 16px; row-gap: 8px; align-items: center; }
+.bld-cols { padding: 0 13px 0 9px; }
+.bld-cols span:nth-child(2) { text-align: center; }
+
+.bld-list { position: relative; display: flex; flex-direction: column; gap: 8px; }
+.bld-block {
+  position: relative; min-height: 62px; padding: 8px 12px 8px 8px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-xl);
+}
+.bld-block.error { border-color: rgba(240, 86, 74, 0.5); }
+.bld-block.shifting { transition: transform 150ms ease; }
+.bld-block.dragging {
+  z-index: 2; transition: none; cursor: grabbing;
+  background: var(--surface-3); border-color: var(--accent); box-shadow: var(--shadow-drag);
+}
+
+.bld-handle { width: 32px; height: 44px; padding: 0; border: 0; border-radius: var(--r-md); background: transparent; color: var(--muted); cursor: grab; touch-action: none; }
+.bld-handle:hover { background: var(--surface-2); color: var(--text-2); }
+.bld-handle svg { width: 12px; height: 18px; }
+.dragging .bld-handle { color: var(--accent-hi); background: transparent; cursor: grabbing; }
+
+.bld-index { text-align: center; font-size: 15px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+.bld-dur { width: 100px; }
+.bld-watts { display: flex; align-items: center; gap: 12px; }
+.bld-watts svg { width: 18px; height: 18px; color: var(--muted); }
+.bld-w { width: 88px; }
+.bld-unit { color: var(--muted); margin-left: -2px; }
+.bld-actions { display: flex; justify-content: flex-end; gap: 4px; }
+.bld-actions svg { width: 18px; height: 18px; }
+
+.bld-error { grid-row: 2; display: flex; align-items: center; gap: 6px; font-size: 13px; line-height: 18px; font-weight: 500; color: var(--danger); }
+.bld-error svg { width: 15px; height: 15px; flex: none; }
+.bld-error.at-dur { grid-column: 4 / -1; }
+.bld-error.at-watts { grid-column: 5 / -1; }
+
+.bld-gap {
+  position: absolute; left: 0; right: 0; z-index: 0;
+  background: rgba(109, 91, 240, 0.07); border: 1.5px dashed var(--accent-line); border-radius: var(--r-xl);
+  transition: top 150ms ease;
+}
+.bld-gap::before { content: ''; position: absolute; left: 6px; right: 0; top: -2px; height: 3px; border-radius: 2px; background: var(--accent-hi); }
+.bld-gap::after { content: ''; position: absolute; left: -6px; top: -6.5px; width: 11px; height: 11px; box-sizing: border-box; border-radius: 50%; border: 2px solid var(--accent-hi); background: var(--bg); }
+
+.bld-foot { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+.bld-hint { margin-left: 4px; font-size: 13px; color: var(--muted); }
+
+.bld-dialog { width: 440px; padding: 24px; }
+.bld-dialog p { margin: 8px 0 24px; color: var(--text-2); }
+.bld-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.bld-block.ghost { position: absolute; left: 0; right: 0; pointer-events: none; }

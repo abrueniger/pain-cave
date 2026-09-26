@@ -1,0 +1,43 @@
+.page.home { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-template-rows: minmax(316px, auto) minmax(388px, auto); gap: 24px; align-content: start; }
+.home .card { padding: 28px; display: flex; flex-direction: column; min-width: 0; }
+.home .card > header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.home .more { display: inline-flex; gap: 4px; font-size: 14px; height: 24px; }
+.home .more svg { width: 14px; height: 14px; }
+.home .grow { flex: 1; min-width: 0; }
+.home .warn { color: var(--warn); }
+.home .label.accent { color: var(--accent-hi); }
+
+.home .free { grid-column: span 5; position: relative; overflow: hidden; }
+.home .free h1 { font-size: 32px; line-height: 38px; margin-top: 10px; }
+.home .free p { color: var(--text-2); max-width: 380px; margin: 12px 0 0; }
+.home .free .deco { position: absolute; right: 0; bottom: 28px; width: 280px; height: 100px; fill: none; stroke: var(--accent-soft); stroke-width: 10; }
+.home .free-start { margin-top: auto; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; position: relative; }
+
+.home .workouts { grid-column: span 7; }
+.home .workouts header { margin-bottom: 8px; }
+.home .wrow { height: 74px; display: flex; align-items: center; gap: 16px; border-top: 1px solid var(--border); }
+.home .wrow:first-of-type { border-top: 0; }
+.home .wname { font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.home-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+.home-empty p { margin: 0; font-size: 15px; }
+
+.home .last { grid-column: span 8; }
+.home .last header { align-items: flex-start; }
+.home .rname { font-size: 20px; line-height: 28px; font-weight: 600; margin-top: 10px; }
+.home .last .well { margin-top: 18px; padding: 10px 12px; background: var(--input); border: 1px solid var(--border); border-radius: var(--r-lg); }
+.home .stats { display: flex; gap: 40px; margin-top: 22px; }
+.home .stats .label { margin-bottom: 4px; }
+.home .stat-v { font-size: 28px; line-height: 32px; }
+.home .stat-v .unit { font-size: 15px; margin-left: 6px; }
+
+.home .devs { grid-column: span 4; }
+.home .devs header { margin-bottom: 12px; }
+.home .drow { height: 76px; display: flex; align-items: center; gap: 14px; border-top: 1px solid var(--border); }
+.home .drow:first-of-type { border-top: 0; }
+.home .well-icon { width: 40px; height: 40px; flex: none; display: grid; place-items: center; border-radius: var(--r-lg); background: var(--surface-2); color: var(--text-2); }
+.home .well-icon svg { width: 20px; height: 20px; }
+.home .dname { font-size: 15px; font-weight: 600; }
+.home .dstate { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.home .dstate.connected { color: var(--ok); }
+.home .dstate.searching { color: var(--warn); }
+.home .devs .foot { margin: auto 0 0; }

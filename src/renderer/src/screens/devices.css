@@ -1,0 +1,49 @@
+.devices .sub { margin: 4px 0 0; color: var(--text-2); }
+.devices .grow { flex: 1; min-width: 0; }
+.devices .well-icon { width: 48px; height: 48px; flex: none; display: grid; place-items: center; border-radius: var(--r-xl); background: var(--surface-2); color: var(--text-2); }
+.devices .well-icon svg { width: 22px; height: 22px; }
+.devices .well-icon.accent { width: 40px; height: 40px; border-radius: var(--r-lg); background: var(--accent-soft); color: var(--accent-hi); }
+.devices .well-icon.accent svg { width: 20px; height: 20px; }
+
+.devices .slot-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+.devices .slot { min-height: 290px; display: flex; flex-direction: column; }
+.slot-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.slot h3 { font-size: 18px; line-height: 24px; font-weight: 600; margin: 0 0 4px; }
+.slot .dev-name { font-size: 15px; }
+.slot .state { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.slot .state.connected { color: var(--ok); }
+.slot .state.searching { color: var(--warn); }
+.slot .state.failed { color: var(--danger); }
+.slot .dot.failed { background: var(--danger); }
+.slot .slot-hint { margin: 10px 0 0; font-size: 13px; line-height: 19px; color: var(--muted); }
+.slot .slot-hint.err { color: var(--danger); }
+.slot .actions { margin-top: auto; padding-top: 16px; display: flex; gap: 8px; }
+
+.spinner { width: 16px; height: 16px; flex: none; border-radius: 50%; border: 2px solid rgba(242, 179, 36, 0.25); border-top-color: var(--warn); animation: spin 0.9s linear infinite; }
+.spinner.accent { border-color: rgba(169, 156, 255, 0.25); border-top-color: var(--accent-hi); }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.zones-card { display: grid; grid-template-columns: 260px 1fr; gap: 48px; }
+.zones-left p { margin: 4px 0 20px; }
+.zones-left .field { display: block; margin-bottom: 6px; }
+.hr-input { display: flex; align-items: center; gap: 10px; }
+.hr-input input { width: 96px; }
+.zones-left .error-text { margin-top: 6px; }
+.devices .zone-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; align-content: start; }
+.zone-col .bar { display: block; height: 8px; border-radius: var(--r-pill); margin-bottom: 12px; }
+.zone-col b { font-size: 15px; font-weight: 700; margin-right: 10px; }
+.zone-col .tnum { margin-top: 8px; font-size: 15px; }
+
+.pair-dialog .pd-head { display: flex; align-items: center; gap: 14px; padding: 20px 24px; }
+.pair-dialog .pd-search { display: flex; align-items: center; gap: 12px; padding: 12px 24px; background: var(--input); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.pair-dialog .pd-list { padding: 8px 12px 0; display: flex; flex-direction: column; gap: 4px; }
+.pair-dialog .cand { height: 60px; display: flex; align-items: center; gap: 14px; padding: 0 12px; border-radius: var(--r-lg); }
+.pair-dialog .cand > svg { width: 18px; height: 18px; color: var(--text-2); flex: none; }
+.pair-dialog .cand:hover { background: var(--surface-2); }
+.pair-dialog .cand:hover button { background: var(--accent); border-color: var(--accent); color: #fff; }
+.pair-dialog .cname { font-size: 15px; font-weight: 600; }
+.pair-dialog .tip { display: flex; gap: 10px; margin: 8px 12px 0; padding: 12px 16px; border-radius: var(--r-lg); background: var(--surface-2); font-size: 13px; line-height: 19px; color: var(--text-2); border: 1px solid transparent; }
+.pair-dialog .tip svg { width: 15px; height: 15px; flex: none; margin-top: 2px; }
+.pair-dialog .tip.prominent { color: var(--text); border-color: var(--border-strong); font-size: 14px; }
+.pair-dialog .tip.prominent svg { color: var(--accent-hi); }
+.pair-dialog .pd-foot { display: flex; justify-content: flex-end; padding: 16px 24px 20px; }

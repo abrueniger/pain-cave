@@ -7,7 +7,7 @@ import type { BluetoothCandidate, Workout } from '../shared/types'
 
 app.whenReady().then(() => {
   const db = openDb(join(app.getPath('userData'), 'paincave.db'))
-  for (const group of ['workouts', 'rides', 'stats', 'settings'] as const) {
+  for (const group of ['workouts', 'rides', 'stats', 'achievements', 'settings'] as const) {
     for (const [name, fn] of Object.entries(db[group])) {
       ipcMain.handle(`${group}:${name}`, (_e, ...args) => (fn as (...a: unknown[]) => unknown)(...args))
     }

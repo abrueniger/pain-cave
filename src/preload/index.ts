@@ -23,6 +23,10 @@ const api: Api = {
     overview: invoke('stats:overview'),
     prs: invoke('stats:prs')
   },
+  achievements: {
+    overview: invoke('achievements:overview'),
+    gains: invoke('achievements:gains')
+  },
   settings: {
     get: invoke('settings:get'),
     set: invoke('settings:set')

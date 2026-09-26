@@ -189,6 +189,7 @@ export function RideScreen({ nav, mode, workoutId }: { nav: Nav; mode: 'free' | 
                 ride={report.ride}
                 samples={report.samples}
                 eyebrow={<span className="label report-eyebrow">Ride summary</span>}
+                summary
                 actions={<>
                   <ConfirmButton label="Discard" question="Discard this ride?" confirmLabel="Discard" onConfirm={discard} />
                   <button className="primary lg save-ride" onClick={() => nav({ name: 'home' })}><IconCheck />Save ride</button>

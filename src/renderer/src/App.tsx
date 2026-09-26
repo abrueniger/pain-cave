@@ -11,6 +11,7 @@ import { RideScreen } from './screens/RideScreen'
 import { HistoryScreen } from './screens/HistoryScreen'
 import { RideDetailScreen } from './screens/RideDetailScreen'
 import { ProgressScreen } from './screens/ProgressScreen'
+import { AchievementsScreen } from './screens/AchievementsScreen'
 
 export function App() {
   const [route, setRoute] = useState<Route>({ name: 'home' })
@@ -33,6 +34,7 @@ export function App() {
       case 'history': return <HistoryScreen nav={nav} />
       case 'rideDetail': return <RideDetailScreen nav={nav} rideId={route.rideId} />
       case 'progress': return <ProgressScreen nav={nav} />
+      case 'achievements': return <AchievementsScreen nav={nav} />
       case 'home': return <HomeScreen nav={nav} />
     }
   })()

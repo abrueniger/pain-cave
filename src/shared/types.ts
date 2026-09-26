@@ -107,6 +107,55 @@ export interface StatsOverview {
   totals: { rides: number; durationS: number; kj: number; distanceKm: number }
 }
 
+// ── Gamification (docs/design-gamification.md). Everything is derived from saved rides. ──
+
+export type MilestoneFamily = 'distance' | 'time' | 'rides' | 'pain'
+export type SpecialId = 'firstRide' | 'firstPlanned' | 'asPlanned' | 'harderThanPlanned' | 'rampTest'
+export type Tier = 1 | 2 | 3 | 4 | 5
+
+export interface MilestoneState {
+  family: MilestoneFamily
+  total: number // km | hours | rides | minutes
+  tiers: { threshold: number; unlockedAt: string | null; rideId: number | null }[] // 5 entries, bronze → violet
+}
+
+export type RecordEntry =
+  | { kind: 'best'; durationS: number; watts: number; prevWatts: number; rideId: number; date: string }
+  | { kind: 'ftp'; watts: number; prevWatts: number; date: string }
+
+export interface SpecialState { id: SpecialId; unlockedAt: string | null; rideId: number | null }
+
+export interface LevelState {
+  xp: number // total
+  level: number
+  title: string
+  levelStartXp: number // xpFor(level)
+  nextLevelXp: number // xpFor(level + 1)
+}
+
+export interface Achievements extends LevelState {
+  milestones: MilestoneState[] // distance, time, rides, pain
+  records: RecordEntry[] // newest first
+  specials: SpecialState[] // in SpecialId order
+}
+
+export type Unlock =
+  | { kind: 'milestone'; family: MilestoneFamily; tier: Tier; threshold: number }
+  | { kind: 'record'; record: RecordEntry }
+  | { kind: 'special'; id: SpecialId }
+
+/** What one ride added (replay with vs. without it). */
+export interface RideGains {
+  xp: number
+  before: LevelState
+  after: LevelState
+  unlocked: Unlock[]
+  /** Closest locked milestone after this ride (shown when nothing unlocked). */
+  nextUp: { family: MilestoneFamily; tier: Tier; total: number; threshold: number } | null
+}
+
+export interface FtpRecordEntry { date: string; watts: number; prevWatts: number }
+
 /** A device offered by Electron's Bluetooth chooser (select-bluetooth-device). */
 export interface BluetoothCandidate {
   id: string
@@ -138,6 +187,10 @@ export interface Api {
     /** Durations for which this ride set a new all-time best (e.g. [60, 300]). */
     prs(rideId: number): Promise<number[]>
   }
+  achievements: {
+    overview(): Promise<Achievements>
+    gains(rideId: number): Promise<RideGains>
+  }
   settings: {
     get(key: SettingKey): Promise<string | null>
     set(key: SettingKey, value: string): Promise<void>
@@ -164,6 +217,7 @@ export interface Api {
 export type SettingKey =
   | 'maxHr' // default 175
   | 'ftp' // W, default DEFAULT_FTP
+  | 'ftpRecords' // JSON FtpRecordEntry[] – appended when the FTP is raised above every earlier value
   | 'device.trainer' // JSON StoredDevice
   | 'device.controller'
   | 'device.hr'

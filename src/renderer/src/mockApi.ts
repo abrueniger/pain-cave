@@ -1,4 +1,5 @@
 // In-memory Api for previewing the renderer in a plain browser (no Electron, no DB).
+import { achievements, gains } from '../../shared/gamification'
 import { LIBRARY } from '../../shared/library'
 import { overview, prs, rideAgg } from '../../shared/stats'
 import { parseZwo } from '../../shared/zwo'
@@ -98,6 +99,10 @@ export const mockApi: Api = {
   stats: {
     overview: async () => overview(aggs()),
     prs: async rideId => prs(aggs(), rideId)
+  },
+  achievements: {
+    overview: async () => achievements(aggs(), JSON.parse(settings.get('ftpRecords') ?? '[]'), [...workouts.values()]),
+    gains: async rideId => gains(aggs(), rideId, [...workouts.values()])
   },
   settings: {
     get: async key => settings.get(key) ?? null,

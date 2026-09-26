@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { overview, prs, rideAgg, rollingBests } from './stats'
-import type { RideSummary, Sample } from './types'
+import { overview, planAt, planFacts, prs, rideAgg, rollingBests } from './stats'
+import type { Block, RideSummary, Sample } from './types'
 
 const ride = (id: number, startedAt: string, extra: Partial<RideSummary> = {}): RideSummary => ({
   id, startedAt, endedAt: startedAt, mode: 'free', workoutId: null, workoutName: null, blocks: null, ftp: 200,
@@ -72,5 +72,20 @@ describe('overview', () => {
         { rideId: 5, date: '2026-09-05T10:00:00Z', avgPower: 220, avgHr: 160, efficiency: 1.375 }
       ]
     }])
+  })
+})
+
+describe('plan facts', () => {
+  const blocks: Block[] = [{ type: 'ramp', durationS: 3, startWatts: 100, endWatts: 105 }, { type: 'steady', durationS: 2, watts: 200 }]
+  const at = (targets: number[]): Sample[] => targets.map((t, tS) => ({ tS, power: null, targetPower: t, cadence: null, hr: null, speed: null }))
+
+  it('planAt: ramps linear and rounded like the engine, null after the plan', () => {
+    expect([0, 1, 2, 3, 4, 5].map(t => planAt(blocks, t))).toEqual([100, 102, 103, 200, 200, null])
+  })
+
+  it('min offset and seconds at +10 W over the plan, seconds at or above the ride FTP', () => {
+    expect(planFacts({ blocks, ftp: 200 }, at([100, 112, 102, 215, 220, 250]))).toEqual({ minOffset: -1, plus10S: 3, atFtpS: 3 })
+    expect(planFacts({ blocks: null, ftp: 200 }, at([200, 150]))).toEqual({ minOffset: null, plus10S: 0, atFtpS: 1 })
+    expect(rideAgg(ride(1, '2026-09-01T10:00:00Z'), [], 175).plan).toEqual({ minOffset: null, plus10S: 0, atFtpS: 0 })
   })
 })

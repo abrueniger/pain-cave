@@ -159,3 +159,38 @@
 /* block-change countdown */
 .target.soon { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .next-up { font-size: 17px; font-weight: 700; color: var(--accent-hi); font-variant-numeric: tabular-nums; }
+
+/* ---------- earned strip (docs/design-gamification.md 4.4) ---------- */
+
+.earned {
+  flex: none; height: 88px; display: flex; align-items: center; gap: 24px; padding: 0 24px; min-width: 0;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px; font-variant-numeric: tabular-nums;
+}
+.earned.up { border-color: rgba(142, 125, 255, 0.55); }
+.earned-xp { flex: none; display: flex; align-items: baseline; gap: 6px; color: var(--accent-hi); font-size: 15px; font-weight: 600; }
+.earned-xp .num { font-size: 34px; line-height: 1; }
+.earned-lvl { flex: none; display: flex; align-items: center; gap: 12px; }
+.earned-bar { flex: none; width: 240px; display: flex; flex-direction: column; gap: 6px; }
+.earned-bar.narrow { width: 220px; }
+.earned-bar b { font-size: 15px; font-weight: 600; }
+.earned-bar span, .earned-item span { font-size: 13px; color: var(--muted); white-space: nowrap; }
+.lvlup-panel { flex: none; height: 60px; display: flex; align-items: center; gap: 14px; padding: 0 18px 0 8px; border-radius: 12px; background: var(--accent-soft); }
+.lvlup-title { font-size: 22px; line-height: 26px; font-weight: 650; }
+.lvlup-sub { font-size: 14px; font-weight: 600; color: var(--text-2); }
+.lvlup-sub.accent { color: var(--accent-hi); }
+.earned-div { flex: none; width: 1px; height: 44px; background: var(--border); }
+.earned > .label { flex: none; }
+.earned-items { flex: 1; min-width: 0; display: flex; align-items: center; gap: 28px; overflow: hidden; }
+.earned-item { flex: none; display: flex; align-items: center; gap: 12px; }
+.earned-item b { display: block; font-size: 15px; font-weight: 600; white-space: nowrap; }
+.earned-item span { display: block; }
+.earned-more { flex: none; font-size: 14px; font-weight: 600; color: var(--text-2); cursor: default; }
+.earned-none { font-size: 14px; color: var(--muted); }
+@media (prefers-reduced-motion: no-preference) {
+  .lvlup-panel svg { animation: emblem-in 600ms ease-out; }
+  .lvlup-panel svg > path:first-of-type { animation: glow-in 600ms ease-out; }
+  .earned.up [role='progressbar'] > span:last-child { animation: bar-in 800ms ease-out; }
+}
+@keyframes emblem-in { from { transform: scale(0.85); } }
+@keyframes glow-in { 0% { stroke: rgba(169, 156, 255, 0); } 50% { stroke: rgba(169, 156, 255, 1); } }
+@keyframes bar-in { from { width: 0; } }

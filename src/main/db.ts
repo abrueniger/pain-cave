@@ -1,7 +1,8 @@
 import { DatabaseSync } from 'node:sqlite'
 import { LIBRARY } from '../shared/library'
-import { overview, prs, rollingBests, type RideAgg } from '../shared/stats'
-import { DEFAULT_MAX_HR, type NewRide, type RideStats, type RideSummary, type Sample, type SettingKey, type Workout, type WorkoutInput } from '../shared/types'
+import { achievements, gains } from '../shared/gamification'
+import { overview, planFacts, prs, rollingBests, type RideAgg } from '../shared/stats'
+import { DEFAULT_MAX_HR, type FtpRecordEntry, type NewRide, type RideStats, type RideSummary, type Sample, type SettingKey, type Workout, type WorkoutInput } from '../shared/types'
 
 type Row = Record<string, any>
 
@@ -85,6 +86,12 @@ export function openDb(path: string) {
     for (const b of rollingBests(power))
       db.prepare('INSERT INTO ride_bests (ride_id, duration_s, watts) VALUES (?, ?, ?)').run(rideId, b.durationS, b.watts)
   }
+  const storeFacts = (rideId: number) => {
+    const ride = db.prepare('SELECT * FROM rides WHERE id = ?').get(rideId)
+    if (!ride) return
+    const samples = db.prepare('SELECT * FROM samples WHERE ride_id = ? ORDER BY t_s').all(rideId).map(toSample)
+    db.prepare('UPDATE rides SET plan_json = ? WHERE id = ?').run(JSON.stringify(planFacts(toRide(ride), samples)), rideId)
+  }
   const getWorkout = (id: number) => {
     const r = db.prepare('SELECT * FROM workouts WHERE id = ?').get(id)
     return r ? toWorkout(r) : null
@@ -115,6 +122,12 @@ export function openDb(path: string) {
     for (const w of LIBRARY) if (!db.prepare('SELECT 1 FROM workouts WHERE name = ?').get(w.name)) insertWorkout(w)
     db.exec('PRAGMA user_version = 2')
   })
+  // v3: plan facts per ride for the gamification replay (backfilled)
+  if (version() === 2) tx(() => {
+    db.exec('ALTER TABLE rides ADD COLUMN plan_json TEXT')
+    for (const r of db.prepare('SELECT id FROM rides').all()) storeFacts(r.id as number)
+    db.exec('PRAGMA user_version = 3')
+  })
   // Rides that never got finish() (crash, killed app) keep their samples but have 0 stats: recompute them
   const crashed = db.prepare('SELECT id FROM rides WHERE ended_at IS NULL AND duration_s = 0').all()
   db.exec(`
@@ -128,13 +141,17 @@ export function openDb(path: string) {
       kj = COALESCE((SELECT ROUND(SUM(power) / 100.0) / 10 FROM samples s WHERE s.ride_id = rides.id), 0)
     WHERE ended_at IS NULL AND duration_s = 0
   `)
-  tx(() => crashed.forEach(r => storeBests(r.id as number)))
+  tx(() => crashed.forEach(r => {
+    storeBests(r.id as number)
+    storeFacts(r.id as number)
+  }))
   // Per-ride distance, HR-zone seconds (zone formula = hrZone) and bests without loading samples
   const aggs = (): RideAgg[] => {
     const maxHr = Number(db.prepare("SELECT value FROM settings WHERE key = 'maxHr'").get()?.value) || DEFAULT_MAX_HR
     const map = new Map<number, RideAgg>()
     for (const r of db.prepare('SELECT * FROM rides').all()) {
-      map.set(r.id as number, { ride: toRide(r), distanceKm: 0, zoneS: [0, 0, 0, 0, 0, 0], bests: [] })
+      const plan = r.plan_json ? JSON.parse(r.plan_json as string) : { minOffset: null, plus10S: 0, atFtpS: 0 }
+      map.set(r.id as number, { ride: toRide(r), distanceKm: 0, zoneS: [0, 0, 0, 0, 0, 0], bests: [], plan })
     }
     const zones = db.prepare(`
       SELECT ride_id, COALESCE((hr * 100 >= ?1 * 50) + (hr * 100 >= ?1 * 60) + (hr * 100 >= ?1 * 70)
@@ -152,6 +169,9 @@ export function openDb(path: string) {
     }
     return [...map.values()]
   }
+  const workoutRefs = () => db.prepare('SELECT id, name, category FROM workouts').all() as Pick<Workout, 'id' | 'name' | 'category'>[]
+  const ftpRecords = (): FtpRecordEntry[] =>
+    JSON.parse((db.prepare("SELECT value FROM settings WHERE key = 'ftpRecords'").get()?.value as string | undefined) ?? '[]')
   const insertSample = db.prepare(
     'INSERT INTO samples (ride_id, t_s, power, target_power, cadence, hr, speed) VALUES (?, ?, ?, ?, ?, ?, ?)'
   )
@@ -188,7 +208,10 @@ export function openDb(path: string) {
         db.prepare(`UPDATE rides SET ended_at = ?, duration_s = ?, avg_power = ?, max_power = ?, avg_hr = ?, max_hr = ?,
           avg_cadence = ?, kj = ? WHERE id = ?`)
           .run(now(), s.durationS, s.avgPower, s.maxPower, s.avgHr, s.maxHr, s.avgCadence, s.kj, rideId)
-        tx(() => storeBests(rideId))
+        tx(() => {
+          storeBests(rideId)
+          storeFacts(rideId)
+        })
       },
       list: () => db.prepare('SELECT * FROM rides ORDER BY started_at DESC, id DESC').all().map(toRide),
       get(id: number) {
@@ -208,6 +231,10 @@ export function openDb(path: string) {
     stats: {
       overview: () => overview(aggs()),
       prs: (rideId: number) => prs(aggs(), rideId)
+    },
+    achievements: {
+      overview: () => achievements(aggs(), ftpRecords(), workoutRefs()),
+      gains: (rideId: number) => gains(aggs(), rideId, workoutRefs())
     },
     settings: {
       get: (key: SettingKey) =>

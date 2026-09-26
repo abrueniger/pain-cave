@@ -1,8 +1,10 @@
 // Analytics shared by main (SQLite) and the renderer's mockApi.
 import { blockDurationS } from './blocks'
-import { BEST_DURATIONS, type Best, type RideSummary, type Sample, type StatsOverview, type WeekStats } from './types'
+import { BEST_DURATIONS, DEFAULT_FTP, type Best, type Block, type RideSummary, type Sample, type StatsOverview, type WeekStats } from './types'
 
 export type RideBest = { durationS: number; watts: number }
+/** Per-ride facts about the plan, stored with the ride. offset = targetPower − plan(t); minOffset null = no plan. */
+export type PlanFacts = { minOffset: number | null; plus10S: number; atFtpS: number }
 
 /** Everything overview() needs per ride; main builds it with SQL, the mock via rideAgg(). */
 export interface RideAgg {
@@ -10,6 +12,7 @@ export interface RideAgg {
   distanceKm: number
   zoneS: number[] // length 6, see WeekStats.zoneS
   bests: RideBest[]
+  plan: PlanFacts
 }
 
 const DAY_MS = 864e5
@@ -30,6 +33,35 @@ export function rollingBests(power: (number | null)[]): RideBest[] {
   })
 }
 
+/** Planned watts of resolved blocks at moving time tS (ramps linear, same as the ride engine). null once the plan is over. */
+export function planAt(blocks: Block[], tS: number): number | null {
+  let start = 0
+  for (const b of blocks) {
+    const d = blockDurationS(b)
+    if (tS < start + d) {
+      if (b.type === 'steady') return b.watts
+      if (b.type === 'ramp') return Math.round(b.startWatts + ((b.endWatts - b.startWatts) * (tS - start)) / b.durationS)
+      return null
+    }
+    start += d
+  }
+  return null
+}
+
+export function planFacts(ride: Pick<RideSummary, 'blocks' | 'ftp'>, samples: Sample[]): PlanFacts {
+  const ftp = ride.ftp ?? DEFAULT_FTP
+  const facts: PlanFacts = { minOffset: null, plus10S: 0, atFtpS: 0 }
+  for (const s of samples) {
+    if (s.targetPower >= ftp) facts.atFtpS++
+    const p = ride.blocks && planAt(ride.blocks, s.tS)
+    if (p == null) continue
+    const o = s.targetPower - p
+    facts.minOffset = Math.min(facts.minOffset ?? o, o)
+    if (o >= 10) facts.plus10S++
+  }
+  return facts
+}
+
 export function rideAgg(ride: RideSummary, samples: Sample[], maxHr: number): RideAgg {
   const zoneS = [0, 0, 0, 0, 0, 0]
   let speed = 0
@@ -37,10 +69,11 @@ export function rideAgg(ride: RideSummary, samples: Sample[], maxHr: number): Ri
     zoneS[hrZone(s.hr, maxHr)]++
     speed += s.speed ?? 0
   }
-  return { ride, distanceKm: speed / 3600, zoneS, bests: rollingBests(samples.map(s => s.power)) }
+  return { ride, distanceKm: speed / 3600, zoneS, bests: rollingBests(samples.map(s => s.power)), plan: planFacts(ride, samples) }
 }
 
-const byStart = (aggs: RideAgg[]) =>
+/** Replay order: startedAt, then id. */
+export const byStart = (aggs: RideAgg[]) =>
   aggs.slice().sort((a, b) => a.ride.startedAt.localeCompare(b.ride.startedAt) || a.ride.id - b.ride.id)
 
 /** Best per duration; ties go to the earliest ride. */

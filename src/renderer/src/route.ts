@@ -7,6 +7,7 @@ export type Route =
   | { name: 'ride'; mode: 'planned'; workoutId: number }
   | { name: 'history' }
   | { name: 'progress' } // analytics across rides
+  | { name: 'achievements' } // level, milestones, records, specials
   | { name: 'rideDetail'; rideId: number }
 
 export type Nav = (r: Route) => void

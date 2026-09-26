@@ -1,10 +1,11 @@
 // Ride summary / ride detail page body: header, stats row, full-ride chart.
 import { useEffect, useState, type ReactNode } from 'react'
 import './ride.css'
-import type { RideSummary, Sample } from '../../../shared/types'
+import type { RideGains, RideSummary, Sample } from '../../../shared/types'
 import { api } from '../api'
 import { workoutDurationS } from '../engine'
 import { formatDuration } from '../format'
+import { EarnedStrip } from './Earned'
 import { RideChart } from './RideChart'
 import { IconTrash } from './icons'
 
@@ -63,14 +64,15 @@ export interface RideReportProps {
   samples: Sample[]
   eyebrow: ReactNode // "RIDE SUMMARY" label or "‹ History" link
   actions: ReactNode // buttons rendered by the caller
+  summary?: boolean // post-ride summary: the earned strip shows level, next up and level-up
 }
 
-export function RideReport({ ride, samples, eyebrow, actions }: RideReportProps) {
+export function RideReport({ ride, samples, eyebrow, actions, summary = false }: RideReportProps) {
   const incomplete = isIncomplete(ride)
-  const [prs, setPrs] = useState<number[]>([])
+  const [gains, setGains] = useState<RideGains | null>(null)
   useEffect(() => {
-    if (ride.endedAt) api.stats.prs(ride.id).then(setPrs)
-  }, [ride.id, ride.endedAt])
+    api.achievements.gains(ride.id).then(setGains, () => setGains(null))
+  }, [ride.id])
   const start = new Date(ride.startedAt)
   const end = ride.endedAt ? new Date(ride.endedAt) : new Date(start.getTime() + ride.durationS * 1000)
   const kind = !ride.blocks ? 'free ride' : incomplete ? `planned ${formatDuration(workoutDurationS(ride.blocks))}` : 'planned workout'
@@ -82,7 +84,6 @@ export function RideReport({ ride, samples, eyebrow, actions }: RideReportProps)
           <div className="report-title">
             <h1>{ride.mode === 'planned' ? (ride.workoutName ?? 'Planned workout') : 'Free ride'}</h1>
             <span className={`badge ${incomplete ? 'warn' : 'ok'}`}>{incomplete ? 'Incomplete' : 'Completed'}</span>
-            {prs.map((d) => <span key={d} className="badge accent">New best · {bestLabel(d)}</span>)}
           </div>
           <div className="report-meta">
             {dayLabel(start)} {start.getFullYear()} · {timeLabel(start)}–{timeLabel(end)} · {kind}
@@ -90,6 +91,7 @@ export function RideReport({ ride, samples, eyebrow, actions }: RideReportProps)
         </div>
         <div className="report-actions">{actions}</div>
       </header>
+      {gains && <EarnedStrip gains={gains} level={summary} />}
       <section className="card report-stats">
         <Stat label="Duration" value={formatDuration(ride.durationS)} />
         <Stat label="Avg power" value={ride.avgPower} unit="W" />

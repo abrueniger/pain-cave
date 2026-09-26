@@ -153,4 +153,53 @@ describe('db', () => {
     expect(db.stats.prs(a)).toEqual([])
     expect(db.stats.prs(b)).toEqual([5, 60, 300, 1200])
   })
+
+  it('stores plan facts at finish and on crash recovery; achievements and gains from stored rides', () => {
+    const path = tmpPath()
+    let db = openDb(path)
+    const plan: Block[] = [{ type: 'steady', durationS: 600, watts: 200 }]
+    const id = db.rides.start({ mode: 'planned', workoutId: 1, workoutName: 'Hard', blocks: plan, ftp: 200 })
+    db.rides.appendSamples(id, Array.from({ length: 600 }, (_, t) => ({ ...sample(t), targetPower: 210 })))
+    db.rides.finish(id, { durationS: 600, avgPower: 200, maxPower: 200, avgHr: null, maxHr: null, avgCadence: 90, kj: 120.4 })
+    expect(db.achievements.gains(id)).toMatchObject({
+      xp: 120, before: { level: 1 }, after: { level: 2, xp: 120 },
+      unlocked: [{ kind: 'special', id: 'firstRide' }, { kind: 'special', id: 'firstPlanned' },
+        { kind: 'special', id: 'asPlanned' }, { kind: 'special', id: 'harderThanPlanned' }]
+    })
+    const crashed = db.rides.start({ mode: 'planned', workoutId: 1, workoutName: 'Hard', blocks: plan, ftp: 200 })
+    db.rides.appendSamples(crashed, Array.from({ length: 300 }, (_, t) => ({ ...sample(t), targetPower: 190 })))
+    db.settings.set('ftpRecords', JSON.stringify([{ date: '2026-01-01T00:00:00.000Z', watts: 220, prevWatts: 200 }]))
+    db.close()
+
+    db = openDb(path)
+    const raw = new DatabaseSync(path)
+    expect(raw.prepare('SELECT plan_json FROM rides ORDER BY id').all().map(r => JSON.parse(r.plan_json as string))).toEqual([
+      { minOffset: 10, plus10S: 600, atFtpS: 600 },
+      { minOffset: -10, plus10S: 0, atFtpS: 0 }
+    ])
+    raw.close()
+    const a = db.achievements.overview()
+    expect(a).toMatchObject({ level: 2, records: [{ kind: 'ftp', watts: 220 }] })
+    expect(a.milestones.map(m => m.total)).toEqual([expect.closeTo(9 * 30.5 / 36, 5), 0.25, 2, 0])
+    db.close()
+  })
+
+  it('migrates a v2 database: plan facts backfilled', () => {
+    const path = tmpPath()
+    openDb(path).close()
+    const v2 = new DatabaseSync(path)
+    v2.exec(`ALTER TABLE rides DROP COLUMN plan_json; PRAGMA user_version = 2;
+      INSERT INTO rides (id, started_at, ended_at, mode, blocks_json, duration_s, kj, ftp)
+      VALUES (1, '2026-09-01T10:00:00Z', '2026-09-01T11:00:00Z', 'planned', '[{"type":"steady","durationS":60,"watts":150}]', 60, 12, 140);`)
+    const ins = v2.prepare('INSERT INTO samples VALUES (1, ?, 200, ?, 90, NULL, 36)')
+    for (let t = 0; t < 60; t++) ins.run(t, t < 30 ? 150 : 149)
+    v2.close()
+    const db = openDb(path)
+    expect(db.achievements.gains(1).unlocked.map(u => u.kind === 'special' && u.id)).toEqual(['firstRide', 'firstPlanned', 'asPlanned'])
+    db.close()
+    const raw = new DatabaseSync(path)
+    expect(raw.prepare('PRAGMA user_version').get()).toEqual({ user_version: 3 })
+    expect(JSON.parse(raw.prepare('SELECT plan_json FROM rides').get()!.plan_json as string)).toEqual({ minOffset: -1, plus10S: 0, atFtpS: 60 })
+    raw.close()
+  })
 })

@@ -1,4 +1,4 @@
-.page.home { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-template-rows: minmax(316px, auto) minmax(388px, auto); gap: 24px; align-content: start; }
+.page.home { padding: 32px 48px 28px; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-template-rows: 72px minmax(300px, auto) minmax(352px, auto); gap: 24px; align-content: start; }
 .home .card { padding: 28px; display: flex; flex-direction: column; min-width: 0; }
 .home .card > header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .home .more { display: inline-flex; gap: 4px; font-size: 14px; height: 24px; }
@@ -13,7 +13,7 @@
 .home .free .deco { position: absolute; right: 0; bottom: 28px; width: 280px; height: 100px; fill: none; stroke: var(--accent-soft); stroke-width: 10; }
 .home .free-start { margin-top: auto; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; position: relative; }
 
-.home .workouts { grid-column: span 7; }
+.home .workouts { grid-column: span 7; padding: 22px 28px 10px; }
 .home .workouts header { margin-bottom: 8px; }
 .home .wrow { height: 74px; display: flex; align-items: center; gap: 16px; border-top: 1px solid var(--border); }
 .home .wrow:first-of-type { border-top: 0; }
@@ -21,17 +21,17 @@
 .home-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
 .home-empty p { margin: 0; font-size: 15px; }
 
-.home .last { grid-column: span 8; }
+.home .last { grid-column: span 8; padding: 22px 28px; }
 .home .last header { align-items: flex-start; }
-.home .rname { font-size: 20px; line-height: 28px; font-weight: 600; margin-top: 10px; }
-.home .last .well { margin-top: 18px; padding: 10px 12px; background: var(--input); border: 1px solid var(--border); border-radius: var(--r-lg); }
-.home .stats { display: flex; gap: 40px; margin-top: 22px; }
+.home .rname { font-size: 20px; line-height: 28px; font-weight: 600; margin-top: 6px; }
+.home .last .well { margin-top: 14px; padding: 10px 12px; background: var(--input); border: 1px solid var(--border); border-radius: var(--r-lg); }
+.home .stats { display: flex; gap: 40px; margin-top: 14px; }
 .home .stats .label { margin-bottom: 4px; }
 .home .stat-v { font-size: 28px; line-height: 32px; }
 .home .stat-v .unit { font-size: 15px; margin-left: 6px; }
 
-.home .devs { grid-column: span 4; }
-.home .devs header { margin-bottom: 12px; }
+.home .devs { grid-column: span 4; padding: 22px 28px; }
+.home .devs header { margin-bottom: 4px; }
 .home .drow { height: 76px; display: flex; align-items: center; gap: 14px; border-top: 1px solid var(--border); }
 .home .drow:first-of-type { border-top: 0; }
 .home .well-icon { width: 40px; height: 40px; flex: none; display: grid; place-items: center; border-radius: var(--r-lg); background: var(--surface-2); color: var(--text-2); }
@@ -41,3 +41,18 @@
 .home .dstate.connected { color: var(--ok); }
 .home .dstate.searching { color: var(--warn); }
 .home .devs .foot { margin: auto 0 0; }
+
+.home .lvl-card {
+  grid-column: span 12; height: 72px; padding: 0 28px 0 16px; display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 18px;
+  font: inherit; color: var(--text); text-align: left; white-space: normal;
+}
+.home button.lvl-card:hover { background: var(--surface-2); }
+.home .lvl-name { flex: none; width: 150px; }
+.home .lvl-title { font-size: 18px; line-height: 24px; font-weight: 650; }
+.home .lvl-progress { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.home .lvl-row { display: flex; align-items: baseline; justify-content: space-between; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.home .lvl-row .num { font-size: 17px; color: var(--text); }
+.home .lvl-div { flex: none; width: 1px; height: 32px; background: var(--border); }
+.home .lvl-link { display: inline-flex; align-items: center; gap: 4px; font-size: 14px; font-weight: 600; color: var(--accent-hi); }
+.home .lvl-link svg { width: 16px; height: 16px; }
+.home .lvl-card > svg:first-child { width: 44px; height: 44px; }

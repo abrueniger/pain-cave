@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
-import type { RideSummary, Sample, Workout } from '../../../shared/types'
+import type { LevelState, RideSummary, Sample, Workout } from '../../../shared/types'
 import { api } from '../api'
 import { devices, type DeviceKind } from '../devices'
 import { formatDuration } from '../format'
 import type { Nav } from '../route'
+import { n0 } from '../components/Earned'
+import { LevelEmblem } from '../components/LevelEmblem'
 import { ProfileThumb } from '../components/ProfileThumb'
+import { XpBar } from '../components/XpBar'
 import { RideChart } from '../components/RideChart'
 import { IconChevronRight, IconController, IconHeart, IconPlay, IconTrainer } from '../components/icons'
 import { workoutMeta } from './builder'
@@ -31,11 +34,13 @@ export function HomeScreen({ nav }: { nav: Nav }) {
   const [, rerender] = useState(0)
   const [workouts, setWorkouts] = useState<Workout[] | null>(null)
   const [last, setLast] = useState<{ ride: RideSummary; samples: Sample[] } | null>(null)
+  const [lvl, setLvl] = useState<LevelState | null>(null)
 
   useEffect(() => devices.on('status', () => rerender((n) => n + 1)), [])
   useEffect(() => {
     api.workouts.list().then((ws) => setWorkouts([...ws].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 3)))
     api.rides.list().then((rs) => rs[0] && api.rides.get(rs[0].id).then(setLast))
+    api.achievements.overview().then(setLvl, () => {})
   }, [])
 
   const trainerOk = devices.status('trainer').status === 'connected'
@@ -43,6 +48,8 @@ export function HomeScreen({ nav }: { nav: Nav }) {
 
   return (
     <main className="page home">
+      <LevelCard lvl={lvl} onClick={() => nav({ name: 'achievements' })} />
+
       <section className="card free">
         <div className="label accent">Free ride</div>
         <h1>Just ride</h1>
@@ -126,6 +133,30 @@ export function HomeScreen({ nav }: { nav: Nav }) {
         <p className="small muted foot">Paired devices reconnect automatically.</p>
       </section>
     </main>
+  )
+}
+
+function LevelCard({ lvl, onClick }: { lvl: LevelState | null; onClick: () => void }) {
+  if (!lvl) return <div className="card lvl-card" />
+  const first = lvl.level === 1
+  return (
+    <button className="card lvl-card" onClick={onClick}
+      aria-label={`Level ${lvl.level}, ${lvl.title}. ${n0(lvl.xp)} of ${n0(lvl.nextLevelXp)} XP. Open achievements`}>
+      <LevelEmblem level={lvl.level} size={44} />
+      <div className="lvl-name">
+        <div className="label accent">Level {lvl.level}</div>
+        <div className="lvl-title">{lvl.title}</div>
+      </div>
+      <div className="lvl-progress">
+        <div className="lvl-row">
+          <span>{first ? 'Your first ride unlocks Level 2' : `${n0(lvl.nextLevelXp - lvl.xp)} XP to Level ${lvl.level + 1}`}</span>
+          {first ? <span>0 XP</span> : <span><b className="num">{n0(lvl.xp)}</b> / {n0(lvl.nextLevelXp)} XP</span>}
+        </div>
+        <XpBar {...lvl} height={8} />
+      </div>
+      <span className="lvl-div" />
+      <span className="lvl-link">Achievements<IconChevronRight /></span>
+    </button>
   )
 }
 

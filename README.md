@@ -61,6 +61,7 @@ you what's coming next, and a history that shows whether you're getting fitter.
 |---|---|
 | ![Home](docs/screenshots/home.png) | ![Workout builder](docs/screenshots/builder.png) |
 | ![Progress](docs/screenshots/progress.png) | ![Achievements](docs/screenshots/achievements.png) |
+| ![Ride summary with level-up](docs/screenshots/summary.png) | ![Level and titles](docs/screenshots/achievements-2.png) |
 
 ## Hardware
 

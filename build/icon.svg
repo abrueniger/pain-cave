@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0" stop-color="#8676FF"/>
+      <stop offset="1" stop-color="#4A39C8"/>
+    </linearGradient>
+    <linearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.32"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- macOS icon grid: 824px squircle-ish tile inside the 1024 canvas -->
+  <rect x="100" y="100" width="824" height="824" rx="186" fill="url(#bg)"/>
+  <rect x="100.5" y="100.5" width="823" height="823" rx="185.5" fill="none" stroke="#FFFFFF" stroke-opacity="0.14"/>
+  <!-- workout profile: warm-up, climb, peak, settle -->
+  <polygon points="236,652 356,652 356,500 486,500 486,332 616,332 616,500 788,500 788,760 236,760" fill="url(#fill)"/>
+  <polyline points="236,652 356,652 356,500 486,500 486,332 616,332 616,500 788,500" fill="none" stroke="#FFFFFF" stroke-width="58" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

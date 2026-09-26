@@ -12,6 +12,7 @@ export interface RideChartProps {
   positionS?: number // vertical "now" line; omit for static charts
   offset?: number // planned: dashed plan+offset line from positionS on
   height?: number // px, default 220
+  compact?: boolean // no axes, no legend (Home 'Last ride' card)
 }
 
 const FREE_MIN_S = 600

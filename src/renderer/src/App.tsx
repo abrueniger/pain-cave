@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
+import '@fontsource-variable/archivo/wdth.css'
 import { devices } from './devices'
 import type { Route } from './route'
-import { DeviceDots } from './components/DeviceDots'
+import { TopBar } from './components/TopBar'
+import { HomeScreen } from './screens/HomeScreen'
 import { DevicesScreen } from './screens/DevicesScreen'
 import { WorkoutsScreen } from './screens/WorkoutsScreen'
 import { BuilderScreen } from './screens/BuilderScreen'
@@ -16,33 +18,26 @@ export function App() {
     devices.connectStored().catch((e) => console.error('connectStored', e))
   }, [])
 
-  switch (route.name) {
-    case 'devices':
-      return <DevicesScreen nav={setRoute} />
-    case 'workouts':
-      return <WorkoutsScreen nav={setRoute} />
-    case 'builder':
-      return <BuilderScreen nav={setRoute} workoutId={route.workoutId} />
-    case 'ride':
-      return <RideScreen nav={setRoute} mode={route.mode} workoutId={route.mode === 'planned' ? route.workoutId : null} />
-    case 'history':
-      return <HistoryScreen nav={setRoute} />
-    case 'rideDetail':
-      return <RideDetailScreen nav={setRoute} rideId={route.rideId} />
-    case 'home':
-      return (
-        <main className="screen home">
-          <header className="topbar">
-            <h1>PainCave</h1>
-            <DeviceDots />
-          </header>
-          <nav className="home-menu">
-            <button className="primary" onClick={() => setRoute({ name: 'ride', mode: 'free' })}>Free ride</button>
-            <button onClick={() => setRoute({ name: 'workouts' })}>Workouts</button>
-            <button onClick={() => setRoute({ name: 'history' })}>History</button>
-            <button onClick={() => setRoute({ name: 'devices' })}>Devices</button>
-          </nav>
-        </main>
-      )
+  // The ride screen owns the whole window (and renders its own slim bar for the summary)
+  if (route.name === 'ride') {
+    return <RideScreen nav={setRoute} mode={route.mode} workoutId={route.mode === 'planned' ? route.workoutId : null} />
   }
+
+  const screen = (() => {
+    switch (route.name) {
+      case 'devices': return <DevicesScreen nav={setRoute} />
+      case 'workouts': return <WorkoutsScreen nav={setRoute} />
+      case 'builder': return <BuilderScreen nav={setRoute} workoutId={route.workoutId} />
+      case 'history': return <HistoryScreen nav={setRoute} />
+      case 'rideDetail': return <RideDetailScreen nav={setRoute} rideId={route.rideId} />
+      case 'home': return <HomeScreen nav={setRoute} />
+    }
+  })()
+
+  return (
+    <>
+      <TopBar route={route} nav={setRoute} />
+      {screen}
+    </>
+  )
 }

@@ -6,17 +6,19 @@ const KINDS: { kind: DeviceKind; label: string }[] = [
   { kind: 'controller', label: 'Ride' },
   { kind: 'hr', label: 'HR' }
 ]
+const STATE = { connected: 'Connected', searching: 'Searching', none: 'Not connected' } as const
 
-/** One status dot per device: green connected, yellow searching, grey none. */
-export function DeviceDots() {
+/** Status dot + label per device. Re-renders on status changes. */
+export function DeviceDots({ className = 'device-pill' }: { className?: string }) {
   const [, rerender] = useState(0)
   useEffect(() => devices.on('status', () => rerender((n) => n + 1)), [])
   return (
-    <span className="device-dots">
+    <span className={className}>
       {KINDS.map(({ kind, label }) => {
         const s = devices.status(kind)
         return (
-          <span key={kind} className={`dot dot-${s.status}`} title={s.name ?? 'not connected'}>
+          <span key={kind} title={`${label}: ${STATE[s.status]}${s.name ? ` (${s.name})` : ''}`}>
+            <span className={`dot ${s.status}`} />
             {label}
           </span>
         )

@@ -27,13 +27,25 @@ const FIRMWARE_HINT =
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 const value = (e: Event) => (e.target as BluetoothRemoteGATTCharacteristic).value!
 
+/**
+ * Electron only reports a chooser (select-bluetooth-device) once a device shows up, so a chooser
+ * cancelled before that can't be closed right away. It's flagged instead and cancelled at its first
+ * candidate event; a newer requestDevice() also drops it.
+ */
+let abandoned = false
+
+function requestDevice(opts: RequestDeviceOptions) {
+  abandoned = false
+  return navigator.bluetooth.requestDevice(opts)
+}
+
 /** requestDevice() run by main with a user gesture (no click needed). */
 async function viaGesture(opts: RequestDeviceOptions) {
   let device: BluetoothDevice | undefined
   let error: unknown = new Error('requestDevice did not run')
   const w = window as unknown as { __paincaveGesture?: () => Promise<void> }
   w.__paincaveGesture = () =>
-    navigator.bluetooth.requestDevice(opts).then(
+    requestDevice(opts).then(
       d => {
         device = d
       },
@@ -47,14 +59,19 @@ async function viaGesture(opts: RequestDeviceOptions) {
 }
 
 const isCancel = (e: unknown) => (e as Error)?.name === 'NotFoundError'
+const cancelled = () => new DOMException('Chooser cancelled', 'NotFoundError')
 
 export function createBluetoothManager(): DeviceManager {
   const ev = createEmitter()
+  api.bluetooth.onCandidates(() => {
+    if (abandoned) api.bluetooth.select('')
+  })
   const stored: Partial<Record<DeviceKind, StoredDevice>> = {}
   const devs: Partial<Record<DeviceKind, BluetoothDevice>> = {}
   const busy = new Set<DeviceKind>()
   let chosen: string | null = null
-  let cancelSearch: (() => void) | null = null
+  let abort: (() => void) | null = null // settles the pending chooser
+  let cancelPair: (() => void) | null = null // settles pair() while it still waits for its turn
   let searching = false
   let retryTimer: ReturnType<typeof setTimeout> | undefined
   let retryDelay = RETRY_MS
@@ -65,6 +82,21 @@ export function createBluetoothManager(): DeviceManager {
     const p = lock.then(fn)
     lock = p.catch(() => {})
     return p
+  }
+
+  /** A chooser that abort() settles at once, even while Chromium still has it open (see `abandoned`). */
+  function request(opts: RequestDeviceOptions, gesture: boolean) {
+    return new Promise<BluetoothDevice>((resolve, reject) => {
+      const me = () => {
+        abandoned = true
+        api.bluetooth.select('')
+        reject(cancelled())
+      }
+      abort = me
+      ;(gesture ? requestDevice(opts) : viaGesture(opts)).then(resolve, reject).finally(() => {
+        if (abort === me) abort = null
+      })
+    })
   }
 
   // --- trainer (FTMS)
@@ -209,10 +241,9 @@ export function createBluetoothManager(): DeviceManager {
     const off = api.bluetooth.onCandidates(list => {
       if (list.some(c => c.id === want.id)) pick(want.id)
     })
-    const timer = setTimeout(() => pick(''), SEARCH_TIMEOUT_MS)
-    cancelSearch = () => pick('')
+    const timer = setTimeout(() => !done && abort?.(), SEARCH_TIMEOUT_MS)
     try {
-      const device = await viaGesture(OPTIONS[kind])
+      const device = await request(OPTIONS[kind], false)
       if (stored[kind] === want) await use(kind, device, 3)
     } catch (e) {
       if (!isCancel(e)) console.warn('connect', kind, e)
@@ -220,7 +251,6 @@ export function createBluetoothManager(): DeviceManager {
     } finally {
       off()
       clearTimeout(timer)
-      cancelSearch = null
     }
   }
 
@@ -261,17 +291,26 @@ export function createBluetoothManager(): DeviceManager {
     on: ev.on,
 
     async pair(kind) {
-      cancelSearch?.()
+      abort?.() // a background search gives way
       chosen = null
-      const opts = OPTIONS[kind]
+      let stop = false
+      const stopped = new Promise<never>((_, reject) => {
+        cancelPair = () => {
+          stop = true
+          reject(cancelled())
+        }
+      })
       let device: BluetoothDevice
       try {
-        device = await exclusive(() =>
-          navigator.userActivation?.isActive ? navigator.bluetooth.requestDevice(opts) : viaGesture(opts)
-        )
+        device = await Promise.race([
+          stopped,
+          exclusive(() => (stop ? Promise.reject(cancelled()) : request(OPTIONS[kind], !!navigator.userActivation?.isActive)))
+        ])
       } catch (e) {
         if (isCancel(e)) return
         throw e
+      } finally {
+        cancelPair = null
       }
       const old = devs[kind]
       if (old && old !== device) {
@@ -286,7 +325,9 @@ export function createBluetoothManager(): DeviceManager {
 
     choose(candidateId) {
       chosen = candidateId || null
-      api.bluetooth.select(candidateId)
+      if (candidateId) return api.bluetooth.select(candidateId)
+      cancelPair?.()
+      abort?.()
     },
 
     async connectStored() {

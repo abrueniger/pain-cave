@@ -2,12 +2,17 @@ import { describe, expect, it, vi } from 'vitest'
 
 const hex = (s: string) => new DataView(new Uint8Array(s.match(/../g)!.map(x => parseInt(x, 16))).buffer)
 
+const bt = vi.hoisted(() => ({ listeners: new Set<(list: unknown[]) => void>(), selected: [] as string[] }))
+
 vi.mock('../api', () => ({
   api: {
     settings: { get: async () => null, set: async () => {} },
     bluetooth: {
-      onCandidates: () => () => {},
-      select: () => {},
+      onCandidates: (cb: (list: unknown[]) => void) => {
+        bt.listeners.add(cb)
+        return () => bt.listeners.delete(cb)
+      },
+      select: (id: string) => bt.selected.push(id),
       runWithGesture: async () => (window as unknown as { __paincaveGesture: () => Promise<void> }).__paincaveGesture()
     }
   }
@@ -94,5 +99,25 @@ describe('bluetooth manager', () => {
     push(events, hex('2308ffffffff0f')) // released
     push(events, hex('2308ffdfffff0f')) // right up again
     expect(shifts).toEqual(['rightUp', 'rightUp'])
+  })
+
+  it('cancels pairing before any device shows up', async () => {
+    vi.stubGlobal('window', {})
+    vi.stubGlobal('navigator', { bluetooth: { requestDevice: () => new Promise(() => {}) } }) // Chromium keeps scanning
+    const { createBluetoothManager } = await import('./bluetooth')
+    bt.listeners.clear()
+    const m = createBluetoothManager()
+    bt.selected.length = 0
+
+    const paired = m.pair('trainer')
+    await Promise.resolve()
+    m.choose('')
+    await expect(paired).resolves.toBeUndefined()
+    expect(m.status('trainer').status).toBe('none')
+
+    // the chooser Chromium still has open is closed at its first candidate event
+    bt.selected.length = 0
+    for (const cb of bt.listeners) cb([{ id: 'x', name: 'KICKR' }])
+    expect(bt.selected).toEqual([''])
   })
 })

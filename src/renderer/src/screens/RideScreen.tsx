@@ -267,7 +267,7 @@ export function RideScreen({ nav, mode, workoutId }: { nav: Nav; mode: 'free' | 
             <div className="pb-text">
               <strong>{state === 'autoPaused' ? 'Paused – start pedaling to resume' : 'Paused'}</strong>
               <span>
-                {state === 'autoPaused' ? 'Auto-paused after 3 s without cadence' : 'Press Resume or Space to continue'}
+                {state === 'autoPaused' ? 'Auto-paused after 15 s without cadence' : 'Press Resume or Space to continue'}
                 {' · clock stopped · trainer at minimum'}
               </span>
             </div>

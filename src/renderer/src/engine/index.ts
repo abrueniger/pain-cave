@@ -7,7 +7,7 @@ import type { HrZone, RideController, RideState, RideView } from './types'
 const SHIFT_W: Record<Shift, number> = { leftUp: 50, leftDown: -50, rightUp: 10, rightDown: -10 }
 const TRAINER_FRESH_MS = 3000
 const HR_FRESH_MS = 5000
-const AUTO_PAUSE_MS = 3000
+const AUTO_PAUSE_MS = 15000 // without cadence; only once the rider has pedaled
 const FLUSH_EVERY = 5
 
 const clamp = (w: number) => Math.min(LIMITS.maxWatts, Math.max(LIMITS.minWatts, Math.round(w)))
@@ -54,6 +54,7 @@ export function createRideController(opts: {
   let sent: number | null = null
   let ending = false
   let lastPedalAt = 0
+  let pedaled = false // no auto-pause before the first pedal stroke
   let trainer: { d: TrainerData; at: number } | null = null
   let hr: { bpm: number; at: number } | null = null
   let powers: { w: number; at: number }[] = []
@@ -126,7 +127,7 @@ export function createRideController(opts: {
   const tick = () => {
     if (state === 'running') {
       const now = Date.now()
-      if (now - lastPedalAt > AUTO_PAUSE_MS) {
+      if (pedaled && now - lastPedalAt > AUTO_PAUSE_MS) {
         state = 'autoPaused'
         release()
       } else {
@@ -164,6 +165,7 @@ export function createRideController(opts: {
       powers.push({ w: d.power, at: now })
       if (d.cadence > 0) {
         lastPedalAt = now
+        if (state === 'running') pedaled = true
         if (state === 'autoPaused' && !ending) {
           state = 'running'
           send(target())

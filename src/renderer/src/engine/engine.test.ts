@@ -103,11 +103,14 @@ describe('ride controller', () => {
     expect(ctrl.view().block).toMatchObject({ index: 1, remainingS: 5 })
   })
 
-  it('auto-pauses after >3 s without cadence and resumes on pedaling', async () => {
+  it('auto-pauses after >15 s without cadence and resumes on pedaling', async () => {
     const { ctrl, devices, ride, pedal, lastSent } = setup('free')
     await ctrl.start()
     await ride(2)
-    await ride(4, { cadence: 0, power: 0 })
+    await ride(14, { cadence: 0, power: 0 })
+    expect(ctrl.view().state).toBe('running') // a short break doesn't pause
+    expect(devices.release).not.toHaveBeenCalled()
+    await ride(2, { cadence: 0, power: 0 })
     expect(ctrl.view().state).toBe('autoPaused')
     expect(devices.release).toHaveBeenCalled()
     const t = ctrl.view().elapsedS
@@ -121,10 +124,13 @@ describe('ride controller', () => {
     expect(ctrl.view().elapsedS).toBe(t + 2)
   })
 
-  it('auto-pauses before the first pedal stroke', async () => {
-    const { ctrl } = setup('free')
+  it('does not auto-pause before the first pedal stroke', async () => {
+    const { ctrl, ride } = setup('free')
     await ctrl.start()
-    await vi.advanceTimersByTimeAsync(5000)
+    await vi.advanceTimersByTimeAsync(60000)
+    expect(ctrl.view()).toMatchObject({ state: 'running', elapsedS: 60 })
+    await ride(2)
+    await ride(16, { cadence: 0, power: 0 })
     expect(ctrl.view().state).toBe('autoPaused')
   })
 
